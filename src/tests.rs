@@ -4,7 +4,7 @@ use diesel::select;
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
 use std::env;
-use super::{Ltree, LtreeExtensions, subltree, subpath, nlevel, index, text2ltree, ltree2text, lca};
+use super::{Ltree, LtreeExtensions, ltree_array, subltree, subpath, nlevel, index, text2ltree, ltree2text, lca};
 
 table! {
     use super::Ltree;
@@ -89,5 +89,9 @@ fn functions() {
 #[test]
 fn lcat() {
     let connection = get_connection();
-    LoadDsl::load(ltree2text(lca(vec![text2ltree("1.2.2.3"), text2ltree("1.2.3")])), &connection);
+
+    let result = select(ltree2text(lca(ltree_array(vec![text2ltree("1.2.2.3"), text2ltree("1.2.3")]))))
+        .get_result::<String>(&connection);
+
+    assert_eq!(result, Ok("1.2".into()));
 }
