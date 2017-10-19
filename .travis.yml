@@ -1,0 +1,33 @@
+language: rust
+sudo: required
+dist: trusty
+
+cache:
+  cargo: true
+
+install:
+  - cargo install --force diesel_cli --vers 0.16.0 --debug --no-default-features --features postgres && export PATH=$HOME/.cargo:$PATH
+
+before_script:
+  - diesel database setup
+
+addons:
+  postgresql: "9.5"
+
+matrix:
+  fast_finish: true
+  allow_failures:
+    - rust: nightly
+  include:
+  - rust: stable
+    script:
+    - cargo build
+    - cargo test
+  - rust: nightly
+    script:
+    - cargo build
+    - cargo test
+
+env:
+  global:
+    - TEST_DATABASE_URL=postgres://postgres:@localhost/diesel_ltree_test
