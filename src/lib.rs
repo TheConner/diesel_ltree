@@ -22,6 +22,8 @@ mod types {
             }
         }
     }
+
+    impl_query_id!(Ltree);
 }
 
 mod functions {
@@ -37,7 +39,7 @@ mod functions {
     // TODO: index with offset
     sql_function!(text2ltree, text2ltree_t, (text: Text) -> Ltree);
     sql_function!(ltree2text, ltree2text_t, (ltree: Ltree) -> Text);
-    // sql_function!(lca, lca_t, (ltrees: Array<Ltree>) -> Ltree);
+    sql_array_function!(lca, lca_t, (ltrees: Array<Ltree>) -> Ltree);
 }
 
 mod dsl {
