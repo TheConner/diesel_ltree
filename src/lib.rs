@@ -4,6 +4,9 @@ extern crate diesel;
 #[macro_use]
 extern crate diesel_codegen;
 
+#[cfg(test)]
+mod tests;
+
 mod types {
     use diesel::pg::{Pg, PgMetadataLookup, PgTypeMetadata};
     use diesel::types::HasSqlType;
@@ -25,8 +28,17 @@ mod functions {
     use types::*;
     use diesel::types::*;
 
-    sql_function!(ltree2text, ltree2text_t, (x: Ltree) -> Text);
-    sql_function!(text2ltree, text2ltree_t, (x: Text) -> Ltree);
+    sql_function!(subltree, subltree_t, (ltree: Ltree, start: Int4, end: Int4) -> Ltree);
+    sql_function!(subpath, subpath_t, (ltree: Ltree, offset: Int4, len: Int4) -> Ltree);
+    // there's a subpath without a len argument; not sure sql_function! can do iter
+    // i guess i could separate them by module
+    sql_function!(nlevel, nlevel_t, (ltree: Ltree) -> Int4);
+    sql_function!(index, index_t, (a: Ltree, b: Ltree) -> Int4);
+    // TODO: index with offset
+    sql_function!(text2ltree, text2ltree_t, (text: Text) -> Ltree);
+    sql_function!(ltree2text, ltree2text_t, (ltree: Ltree) -> Text);
+    // TODO: lca with up to 8 args
+    sql_function!(lca, lca_t, (a: Ltree, b: Ltree) -> Ltree);
 }
 
 mod dsl {
@@ -56,63 +68,6 @@ mod dsl {
     }
 
     impl<T: Expression<SqlType = Ltree>> LtreeExtensions for T {}
-}
-
-#[cfg(test)]
-mod tests {
-    extern crate dotenv;
-
-    use diesel::prelude::*;
-    use diesel::pg::PgConnection;
-    use std::env;
-    use super::{Ltree, LtreeExtensions, ltree2text, text2ltree};
-
-    table! {
-        use super::Ltree;
-        use diesel::types::*;
-
-        my_tree (id) {
-            id -> Int4,
-            path -> Ltree,
-        }
-    }
-
-    #[derive(Queryable, Debug)]
-    struct MyTree {
-        pub id: i32,
-        pub path: String,
-    }
-
-    #[test]
-    fn base_test() {
-        use self::my_tree;
-        use self::my_tree::dsl::*;
-
-        dotenv::dotenv().ok();
-
-        let database_url = env::var("TEST_DATABASE_URL").expect("TEST_DATABASE_URL must be set");
-        let connection =
-            PgConnection::establish(&database_url).expect("Error connecting to TEST_DATABASE_URL");
-
-        let results = my_tree
-            .select((my_tree::id, ltree2text(my_tree::path)))
-            .filter(my_tree::path.contained_by(text2ltree("root.eukaryota.plantae")))
-            .order(my_tree::id)
-            .load::<MyTree>(&connection)
-            .unwrap()
-            .into_iter()
-            .map(|t| t.path)
-            .collect::<Vec<_>>();
-
-        assert_eq!(
-            results,
-            [
-                "root.eukaryota.plantae",
-                "root.eukaryota.plantae.nematophyta",
-                "root.eukaryota.plantae.chlorophyta"
-            ]
-        );
-    }
 }
 
 pub use self::types::*;
