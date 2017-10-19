@@ -4,7 +4,7 @@ use diesel::select;
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
 use std::env;
-use super::{Ltree, LtreeExtensions, ltree2text, text2ltree, lca};
+use super::{Ltree, LtreeExtensions, subltree, subpath, nlevel, index, text2ltree, ltree2text};
 
 table! {
     use super::Ltree;
@@ -35,7 +35,11 @@ fn base_operations() {
 
     let results = my_tree::table
         .select((my_tree::id, ltree2text(my_tree::path)))
-        .filter(my_tree::path.contained_by(text2ltree("root.eukaryota.plantae")).or(my_tree::path.contains(text2ltree("root.bacteria"))))
+        .filter(
+            my_tree::path
+                .contained_by(text2ltree("root.eukaryota.plantae"))
+                .or(my_tree::path.contains(text2ltree("root.bacteria"))),
+        )
         .order(my_tree::id)
         .load::<MyTree>(&connection)
         .unwrap()
@@ -50,7 +54,7 @@ fn base_operations() {
             "root.bacteria",
             "root.eukaryota.plantae",
             "root.eukaryota.plantae.nematophyta",
-            "root.eukaryota.plantae.chlorophyta"
+            "root.eukaryota.plantae.chlorophyta",
         ]
     );
 }
@@ -60,10 +64,24 @@ fn base_operations() {
 fn functions() {
     let connection = get_connection();
 
-    let result =
-        select(ltree2text(lca(text2ltree("1.2.2.3"), text2ltree("1.2.3"))))
-        .get_result::<String>(&connection)
-        .unwrap();
+    let result = select(ltree2text(subltree(text2ltree("Top.Child1.Child2"), 1, 2)))
+        .get_result::<String>(&connection);
 
-    assert_eq!(result, "1.2");
+    assert_eq!(result, Ok("Child1".into()));
+
+    let result = select(ltree2text(subpath(text2ltree("Top.Child1.Child2"), 0, 2)))
+        .get_result::<String>(&connection);
+
+    assert_eq!(result, Ok("Top.Child1".into()));
+
+    let result = select(nlevel(text2ltree("Top.Child1.Child2"))).get_result::<i32>(&connection);
+
+    assert_eq!(result, Ok(3));
+
+    let result = select(index(
+        text2ltree("0.1.2.3.5.4.5.6.8.5.6.8"),
+        text2ltree("5.6"),
+    )).get_result::<i32>(&connection);
+
+    assert_eq!(result, Ok(6));
 }

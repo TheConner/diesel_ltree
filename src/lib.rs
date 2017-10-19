@@ -37,8 +37,7 @@ mod functions {
     // TODO: index with offset
     sql_function!(text2ltree, text2ltree_t, (text: Text) -> Ltree);
     sql_function!(ltree2text, ltree2text_t, (ltree: Ltree) -> Text);
-    // TODO: lca with up to 8 args
-    sql_function!(lca, lca_t, (a: Ltree, b: Ltree) -> Ltree);
+    // sql_function!(lca, lca_t, (ltrees: Array<Ltree>) -> Ltree);
 }
 
 mod dsl {
