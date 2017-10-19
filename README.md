@@ -1,4 +1,4 @@
-# diesel_ltree
+# diesel_ltree [![Build Status](https://travis-ci.org/kivikakk/diesel_ltree.svg?branch=master)](https://travis-ci.org/kivikakk/diesel_ltree)
 
 Adds support for the `ltree` PostgreSQL extension type to Diesel.
 
