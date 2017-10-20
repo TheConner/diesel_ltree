@@ -4,8 +4,8 @@ use diesel::select;
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
 use std::env;
-use super::{Ltree, LtreeExtensions, subltree, subpath, nlevel, index, text2ltree, ltree2text,
-            lquery};
+use super::{Ltree, LtreeExtensions, LqueryExtensions, LtxtqueryExtensions, subltree, subpath,
+            nlevel, index, text2ltree, ltree2text, lquery, ltxtquery};
 
 table! {
     use super::Ltree;
@@ -108,12 +108,18 @@ fn operators() {
     assert_eq!(result, Ok((true, true, false, true)));
 
     let result = select((
-        text2ltree("foo_bar_baz").matches(
-            lquery("foo_bar%"),
-        ),
-        text2ltree("foo_barbaz").matches(
-            lquery("foo_bar%"),
-        ),
-    )).get_result::<(bool, bool)>(&connection);
-    assert_eq!(result, Ok((true, false)));
+        text2ltree("foo_bar_baz").matches(lquery("foo_bar%")),
+        text2ltree("foo_barbaz").matches(lquery("foo_bar%")),
+        lquery("foo_bar%*").matches(text2ltree("foo1_bar2_baz")),
+        lquery("foo_bar%*").matches(text2ltree("foo1_br2_baz")),
+    )).get_result::<(bool, bool, bool, bool)>(&connection);
+    assert_eq!(result, Ok((true, false, true, false)));
+
+    let q = ltxtquery("Europe & Russia*@ & !Transportation");
+    let result = select((
+        text2ltree("Russian.Hello.Europe").tmatches(q),
+        q.tmatches(text2ltree("Europe.russia.Transportation")),
+        q.tmatches(text2ltree("russians.today.Europe")),
+    )).get_result::<(bool, bool, bool)>(&connection);
+    assert_eq!(result, Ok((true, false, true)));
 }

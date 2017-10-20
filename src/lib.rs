@@ -147,6 +147,7 @@ mod dsl {
         diesel_infix_operator!(Lt, " < ", backend: Pg);
         diesel_infix_operator!(LtEq, " <= ", backend: Pg);
         diesel_infix_operator!(Matches, " ~ ", backend: Pg);
+        diesel_infix_operator!(TMatches, " @ ", backend: Pg);
     }
 
     use self::predicates::*;
@@ -190,6 +191,10 @@ mod dsl {
         fn matches<T: AsExpression<Lquery>>(self, other: T) -> Matches<Self, T::Expression> {
             Matches::new(self, other.as_expression())
         }
+
+        fn tmatches<T: AsExpression<Ltxtquery>>(self, other: T) -> TMatches<Self, T::Expression> {
+            TMatches::new(self, other.as_expression())
+        }
     }
 
     pub trait LqueryExtensions: Expression<SqlType = Lquery> + Sized {
@@ -198,9 +203,15 @@ mod dsl {
         }
     }
 
-    impl<T: Expression<SqlType = Ltree>> LtreeExtensions for T {}
+    pub trait LtxtqueryExtensions: Expression<SqlType = Ltxtquery> + Sized {
+        fn tmatches<T: AsExpression<Ltree>>(self, other: T) -> TMatches<Self, T::Expression> {
+            TMatches::new(self, other.as_expression())
+        }
+    }
 
+    impl<T: Expression<SqlType = Ltree>> LtreeExtensions for T {}
     impl<T: Expression<SqlType = Lquery>> LqueryExtensions for T {}
+    impl<T: Expression<SqlType = Ltxtquery>> LtxtqueryExtensions for T {}
 }
 
 pub use self::types::*;
