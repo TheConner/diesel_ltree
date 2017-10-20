@@ -5,7 +5,7 @@ use diesel::prelude::*;
 use diesel::pg::PgConnection;
 use std::env;
 use super::{Ltree, LtreeExtensions, subltree, subpath, nlevel, index, text2ltree, ltree2text,
-            lquery_from_text};
+            lquery};
 
 table! {
     use super::Ltree;
@@ -109,10 +109,10 @@ fn operators() {
 
     let result = select((
         text2ltree("foo_bar_baz").matches(
-            lquery_from_text("foo_bar%"),
+            lquery("foo_bar%"),
         ),
         text2ltree("foo_barbaz").matches(
-            lquery_from_text("foo_bar%"),
+            lquery("foo_bar%"),
         ),
     )).get_result::<(bool, bool)>(&connection);
     assert_eq!(result, Ok((true, false)));

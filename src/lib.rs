@@ -72,58 +72,63 @@ mod functions {
     sql_function!(text2ltree, text2ltree_t, (text: Text) -> Ltree);
     sql_function!(ltree2text, ltree2text_t, (ltree: Ltree) -> Text);
 
-    pub struct LqueryFromTextS<T>(T);
-    pub type LqueryFromText<T> = LqueryFromTextS<<T as AsExpression<Text>>::Expression>;
+    macro_rules! coerce_from_type {
+        ($fn_name:ident, $struct_name:ident, $type:ty, $result:ty) => {
+            #[allow(non_camel_case_types)]
+            #[derive(Debug, Clone, Copy)]
+            #[doc(hidden)]
+            pub struct $struct_name<T>(T);
 
-    pub fn lquery_from_text<T>(expr: T) -> LqueryFromText<T>
-    where
-        T: AsExpression<Text>,
-    {
-        LqueryFromTextS(expr.as_expression())
-    }
+            #[allow(non_camel_case_types)]
+            pub type $fn_name<T> = $struct_name<<T as AsExpression<$type>>::Expression>;
 
-    impl<T> Expression for LqueryFromTextS<T>
-    where
-        T: AsExpression<Text>,
-    {
-        type SqlType = Lquery;
-    }
+            pub fn $fn_name<T>(expr: T) -> $fn_name<T> where T: AsExpression<$type> {
+                $struct_name(expr.as_expression())
+            }
 
-    impl<T, QS> SelectableExpression<QS> for LqueryFromTextS<T>
-    where
-        T: AsExpression<Text>,
-    {
-    }
+            impl<T> Expression for $struct_name<T> where T: AsExpression<$type> {
+                type SqlType = $result;
+            }
 
-    impl<T, QS> AppearsOnTable<QS> for LqueryFromTextS<T>
-    where
-        T: AsExpression<Text>,
-    {
-    }
+            impl<T, QS> SelectableExpression<QS> for $struct_name<T>
+                where
+                T: AsExpression<$type>,
+            {
+            }
 
-    impl_query_id!(LqueryFromTextS<T>);
+            impl<T, QS> AppearsOnTable<QS> for $struct_name<T>
+                where
+                T: AsExpression<$type>,
+            {
+            }
 
-    impl<T, DB> QueryFragment<DB> for LqueryFromTextS<T>
-    where
-        DB: Backend,
-        for<'a> (&'a T): QueryFragment<DB>,
-    {
-        fn walk_ast(&self, mut out: AstPass<DB>) -> QueryResult<()> {
-            out.push_sql("(");
-            QueryFragment::walk_ast(&(&self.0), out.reborrow())?;
-            out.push_sql(")::lquery");
-            Ok(())
+            impl_query_id!($struct_name<T>);
 
+            impl<T, DB> QueryFragment<DB> for $struct_name<T>
+                where
+                DB: Backend,
+            for<'a> (&'a T): QueryFragment<DB>,
+            {
+                fn walk_ast(&self, mut out: AstPass<DB>) -> QueryResult<()> {
+                    out.push_sql("(");
+                    QueryFragment::walk_ast(&&self.0, out.reborrow())?;
+                    out.push_sql(concat!(")::", stringify!($fn_name)));
+                    Ok(())
+
+                }
+            }
+
+            impl<T> NonAggregate for $struct_name<T>
+                where
+                T: NonAggregate,
+            $struct_name<T>: Expression,
+            {
+            }
         }
     }
 
-    impl<T> NonAggregate for LqueryFromTextS<T>
-    where
-        T: NonAggregate,
-        LqueryFromTextS<T>: Expression,
-    {
-    }
-
+    coerce_from_type!(lquery, lquery_t, Text, Lquery);
+    coerce_from_type!(ltxtquery, ltxtquery_t, Text, Ltxtquery);
 }
 
 mod dsl {
