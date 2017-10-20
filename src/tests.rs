@@ -85,3 +85,22 @@ fn functions() {
 
     assert_eq!(result, Ok(6));
 }
+
+#[test]
+fn operators() {
+    let connection = get_connection();
+
+    let result = select((text2ltree("1.1").eq(text2ltree("1.2")),
+                         text2ltree("1.1").eq(text2ltree("1.1")),
+                         text2ltree("1.1").ne(text2ltree("1.2")),
+                         text2ltree("1.1").ne(text2ltree("1.1"))))
+        .get_result::<(bool, bool, bool, bool)>(&connection);
+    assert_eq!(result, Ok((false, true, true, false)));
+
+    let result = select((text2ltree("1").lt(text2ltree("1.1")),
+                         text2ltree("1.2").gt(text2ltree("1.1")),
+                         text2ltree("1.2").le(text2ltree("1.1")),
+                         text2ltree("1.2.1").ge(text2ltree("1.2"))))
+        .get_result::<(bool, bool, bool, bool)>(&connection);
+    assert_eq!(result, Ok((true, true, false, true)));
+}
