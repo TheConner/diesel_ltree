@@ -4,7 +4,8 @@ use diesel::select;
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
 use std::env;
-use super::{Ltree, LtreeExtensions, subltree, subpath, nlevel, index, text2ltree, ltree2text, lquery_from_text};
+use super::{Ltree, LtreeExtensions, subltree, subpath, nlevel, index, text2ltree, ltree2text,
+            lquery_from_text};
 
 table! {
     use super::Ltree;
@@ -90,22 +91,29 @@ fn functions() {
 fn operators() {
     let connection = get_connection();
 
-    let result = select((text2ltree("1.1").eq(text2ltree("1.2")),
-                         text2ltree("1.1").eq(text2ltree("1.1")),
-                         text2ltree("1.1").ne(text2ltree("1.2")),
-                         text2ltree("1.1").ne(text2ltree("1.1"))))
-        .get_result::<(bool, bool, bool, bool)>(&connection);
+    let result = select((
+        text2ltree("1.1").eq(text2ltree("1.2")),
+        text2ltree("1.1").eq(text2ltree("1.1")),
+        text2ltree("1.1").ne(text2ltree("1.2")),
+        text2ltree("1.1").ne(text2ltree("1.1")),
+    )).get_result::<(bool, bool, bool, bool)>(&connection);
     assert_eq!(result, Ok((false, true, true, false)));
 
-    let result = select((text2ltree("1").lt(text2ltree("1.1")),
-                         text2ltree("1.2").gt(text2ltree("1.1")),
-                         text2ltree("1.2").le(text2ltree("1.1")),
-                         text2ltree("1.2.1").ge(text2ltree("1.2"))))
-        .get_result::<(bool, bool, bool, bool)>(&connection);
+    let result = select((
+        text2ltree("1").lt(text2ltree("1.1")),
+        text2ltree("1.2").gt(text2ltree("1.1")),
+        text2ltree("1.2").le(text2ltree("1.1")),
+        text2ltree("1.2.1").ge(text2ltree("1.2")),
+    )).get_result::<(bool, bool, bool, bool)>(&connection);
     assert_eq!(result, Ok((true, true, false, true)));
 
-    let result = select((text2ltree("foo_bar_baz").matches(lquery_from_text("foo_bar%")),
-                         text2ltree("foo_barbaz").matches(lquery_from_text("foo_bar%"))))
-        .get_result::<(bool, bool)>(&connection);
+    let result = select((
+        text2ltree("foo_bar_baz").matches(
+            lquery_from_text("foo_bar%"),
+        ),
+        text2ltree("foo_barbaz").matches(
+            lquery_from_text("foo_bar%"),
+        ),
+    )).get_result::<(bool, bool)>(&connection);
     assert_eq!(result, Ok((true, false)));
 }

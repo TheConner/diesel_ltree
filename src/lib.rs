@@ -142,24 +142,35 @@ mod dsl {
 
     impl<T: Expression<SqlType = Lquery>> LqueryExtensions for T {}
 
-    use ::diesel::types::Text;
+    use diesel::types::Text;
     pub struct LqueryFromTextS<T>(T);
-    pub type LqueryFromText<T> = LqueryFromTextS<
-            <T as AsExpression<Text>>::Expression>;
+    pub type LqueryFromText<T> = LqueryFromTextS<<T as AsExpression<Text>>::Expression>;
 
     pub fn lquery_from_text<T>(expr: T) -> LqueryFromText<T>
-        where T : AsExpression<Text>
+    where
+        T: AsExpression<Text>,
     {
         LqueryFromTextS(expr.as_expression())
     }
 
-    impl<T> Expression for LqueryFromTextS<T> where T : AsExpression<Text> {
+    impl<T> Expression for LqueryFromTextS<T>
+    where
+        T: AsExpression<Text>,
+    {
         type SqlType = Lquery;
     }
 
-    impl<T, QS> ::diesel::SelectableExpression<QS> for LqueryFromTextS<T> where T : AsExpression<Text> {}
+    impl<T, QS> ::diesel::SelectableExpression<QS> for LqueryFromTextS<T>
+    where
+        T: AsExpression<Text>,
+    {
+    }
 
-    impl<T, QS> ::diesel::AppearsOnTable<QS> for LqueryFromTextS<T> where T : AsExpression<Text> {}
+    impl<T, QS> ::diesel::AppearsOnTable<QS> for LqueryFromTextS<T>
+    where
+        T: AsExpression<Text>,
+    {
+    }
 
     impl_query_id!(LqueryFromTextS<T>);
 
