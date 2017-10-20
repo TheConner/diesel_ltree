@@ -24,6 +24,35 @@ mod types {
     }
 
     impl_query_id!(Ltree);
+
+    #[derive(Clone, Copy)]
+    pub struct Lquery;
+
+    impl HasSqlType<Lquery> for Pg {
+        fn metadata(_: &PgMetadataLookup) -> PgTypeMetadata {
+            PgTypeMetadata {
+                oid: 24808,
+                array_oid: 24811,
+            }
+        }
+    }
+
+    impl_query_id!(Lquery);
+
+
+    #[derive(Clone, Copy)]
+    pub struct Ltxtquery;
+
+    impl HasSqlType<Ltxtquery> for Pg {
+        fn metadata(_: &PgMetadataLookup) -> PgTypeMetadata {
+            PgTypeMetadata {
+                oid: 24824,
+                array_oid: 24827,
+            }
+        }
+    }
+
+    impl_query_id!(Ltxtquery);
 }
 
 mod functions {
@@ -32,13 +61,14 @@ mod functions {
 
     sql_function!(subltree, subltree_t, (ltree: Ltree, start: Int4, end: Int4) -> Ltree);
     sql_function!(subpath, subpath_t, (ltree: Ltree, offset: Int4, len: Int4) -> Ltree);
-    // there's a subpath without a len argument; not sure sql_function! can do iter
-    // i guess i could separate them by module
+    // sql_function!(subpath, subpath_t, (ltree: Ltree, offset: Int4) -> Ltree);
     sql_function!(nlevel, nlevel_t, (ltree: Ltree) -> Int4);
     sql_function!(index, index_t, (a: Ltree, b: Ltree) -> Int4);
-    // TODO: index with offset
+    // sql_function!(index, index_t, (a: Ltree, b: Ltree, offset: Int4) -> Int4);
     sql_function!(text2ltree, text2ltree_t, (text: Text) -> Ltree);
     sql_function!(ltree2text, ltree2text_t, (ltree: Ltree) -> Text);
+
+
 }
 
 mod dsl {
@@ -56,6 +86,7 @@ mod dsl {
         diesel_infix_operator!(GtEq, " >= ", backend: Pg);
         diesel_infix_operator!(Lt, " < ", backend: Pg);
         diesel_infix_operator!(LtEq, " <= ", backend: Pg);
+        diesel_infix_operator!(Matches, " ~ ", backend: Pg);
     }
 
     use self::predicates::*;
@@ -95,9 +126,60 @@ mod dsl {
         fn le<T: AsExpression<Ltree>>(self, other: T) -> LtEq<Self, T::Expression> {
             LtEq::new(self, other.as_expression())
         }
+
+        fn matches<T: AsExpression<Lquery>>(self, other: T) -> Matches<Self, T::Expression> {
+            Matches::new(self, other.as_expression())
+        }
+    }
+
+    pub trait LqueryExtensions: Expression<SqlType = Lquery> + Sized {
+        fn matches<T: AsExpression<Ltree>>(self, other: T) -> Matches<Self, T::Expression> {
+            Matches::new(self, other.as_expression())
+        }
     }
 
     impl<T: Expression<SqlType = Ltree>> LtreeExtensions for T {}
+
+    impl<T: Expression<SqlType = Lquery>> LqueryExtensions for T {}
+
+    use ::diesel::types::Text;
+    pub struct LqueryFromTextS<T>(T);
+    pub type LqueryFromText<T> = LqueryFromTextS<
+            <T as AsExpression<Text>>::Expression>;
+
+    pub fn lquery_from_text<T>(expr: T) -> LqueryFromText<T>
+        where T : AsExpression<Text>
+    {
+        LqueryFromTextS(expr.as_expression())
+    }
+
+    impl<T> Expression for LqueryFromTextS<T> where T : AsExpression<Text> {
+        type SqlType = Lquery;
+    }
+
+    impl<T, QS> ::diesel::SelectableExpression<QS> for LqueryFromTextS<T> where T : AsExpression<Text> {}
+
+    impl<T, QS> ::diesel::AppearsOnTable<QS> for LqueryFromTextS<T> where T : AsExpression<Text> {}
+
+    impl_query_id!(LqueryFromTextS<T>);
+
+    impl<T, DB> ::diesel::query_builder::QueryFragment<DB> for LqueryFromTextS<T>
+        where DB: ::diesel::backend::Backend,
+    for <'a> (&'a T) : ::diesel::query_builder::QueryFragment<DB>
+    {
+        fn walk_ast(&self, mut out: ::diesel::query_builder::AstPass<DB>) -> ::diesel::QueryResult<()> {
+            out.push_sql("(");
+            ::diesel::query_builder::QueryFragment::walk_ast(
+                &(&self.0), out.reborrow())?;
+            out.push_sql(")::lquery");
+            Ok(())
+
+        }
+    }
+
+    impl<T> ::diesel::expression::NonAggregate for LqueryFromTextS<T>
+        where T : ::diesel::expression::NonAggregate,
+    LqueryFromTextS<T> : Expression {}
 }
 
 pub use self::types::*;
