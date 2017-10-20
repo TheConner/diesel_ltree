@@ -31,3 +31,4 @@ matrix:
 env:
   global:
     - TEST_DATABASE_URL=postgres://postgres:@localhost/diesel_ltree_test
+    - DATABASE_URL=postgres://postgres:@localhost/diesel_ltree

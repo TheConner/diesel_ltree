@@ -122,4 +122,8 @@ fn operators() {
         q.tmatches(text2ltree("russians.today.Europe")),
     )).get_result::<(bool, bool, bool)>(&connection);
     assert_eq!(result, Ok((true, false, true)));
+
+    let result = select(ltree2text(text2ltree("a.b").concat(text2ltree("c.d"))))
+        .get_result::<String>(&connection);
+    assert_eq!(result, Ok("a.b.c.d".into()));
 }

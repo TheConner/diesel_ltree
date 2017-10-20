@@ -136,6 +136,7 @@ mod dsl {
     use diesel::expression::{AsExpression, Expression};
 
     mod predicates {
+        use types::*;
         use diesel::pg::Pg;
 
         diesel_infix_operator!(Contains, " @> ", backend: Pg);
@@ -148,6 +149,7 @@ mod dsl {
         diesel_infix_operator!(LtEq, " <= ", backend: Pg);
         diesel_infix_operator!(Matches, " ~ ", backend: Pg);
         diesel_infix_operator!(TMatches, " @ ", backend: Pg);
+        diesel_infix_operator!(Concat, " || ", Ltree, backend: Pg);
     }
 
     use self::predicates::*;
@@ -194,6 +196,10 @@ mod dsl {
 
         fn tmatches<T: AsExpression<Ltxtquery>>(self, other: T) -> TMatches<Self, T::Expression> {
             TMatches::new(self, other.as_expression())
+        }
+
+        fn concat<T: AsExpression<Ltree>>(self, other: T) -> Concat<Self, T::Expression> {
+            Concat::new(self, other.as_expression())
         }
     }
 
