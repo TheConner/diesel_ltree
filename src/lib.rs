@@ -57,7 +57,11 @@ mod types {
 
 mod functions {
     use types::*;
+    use diesel::{AppearsOnTable, SelectableExpression, QueryResult};
+    use diesel::backend::Backend;
     use diesel::types::*;
+    use diesel::expression::{AsExpression, Expression, NonAggregate};
+    use diesel::query_builder::{AstPass, QueryFragment};
 
     sql_function!(subltree, subltree_t, (ltree: Ltree, start: Int4, end: Int4) -> Ltree);
     sql_function!(subpath, subpath_t, (ltree: Ltree, offset: Int4, len: Int4) -> Ltree);
@@ -68,6 +72,57 @@ mod functions {
     sql_function!(text2ltree, text2ltree_t, (text: Text) -> Ltree);
     sql_function!(ltree2text, ltree2text_t, (ltree: Ltree) -> Text);
 
+    pub struct LqueryFromTextS<T>(T);
+    pub type LqueryFromText<T> = LqueryFromTextS<<T as AsExpression<Text>>::Expression>;
+
+    pub fn lquery_from_text<T>(expr: T) -> LqueryFromText<T>
+    where
+        T: AsExpression<Text>,
+    {
+        LqueryFromTextS(expr.as_expression())
+    }
+
+    impl<T> Expression for LqueryFromTextS<T>
+    where
+        T: AsExpression<Text>,
+    {
+        type SqlType = Lquery;
+    }
+
+    impl<T, QS> SelectableExpression<QS> for LqueryFromTextS<T>
+    where
+        T: AsExpression<Text>,
+    {
+    }
+
+    impl<T, QS> AppearsOnTable<QS> for LqueryFromTextS<T>
+    where
+        T: AsExpression<Text>,
+    {
+    }
+
+    impl_query_id!(LqueryFromTextS<T>);
+
+    impl<T, DB> QueryFragment<DB> for LqueryFromTextS<T>
+    where
+        DB: Backend,
+        for<'a> (&'a T): QueryFragment<DB>,
+    {
+        fn walk_ast(&self, mut out: AstPass<DB>) -> QueryResult<()> {
+            out.push_sql("(");
+            QueryFragment::walk_ast(&(&self.0), out.reborrow())?;
+            out.push_sql(")::lquery");
+            Ok(())
+
+        }
+    }
+
+    impl<T> NonAggregate for LqueryFromTextS<T>
+    where
+        T: NonAggregate,
+        LqueryFromTextS<T>: Expression,
+    {
+    }
 
 }
 
@@ -141,56 +196,6 @@ mod dsl {
     impl<T: Expression<SqlType = Ltree>> LtreeExtensions for T {}
 
     impl<T: Expression<SqlType = Lquery>> LqueryExtensions for T {}
-
-    use diesel::types::Text;
-    pub struct LqueryFromTextS<T>(T);
-    pub type LqueryFromText<T> = LqueryFromTextS<<T as AsExpression<Text>>::Expression>;
-
-    pub fn lquery_from_text<T>(expr: T) -> LqueryFromText<T>
-    where
-        T: AsExpression<Text>,
-    {
-        LqueryFromTextS(expr.as_expression())
-    }
-
-    impl<T> Expression for LqueryFromTextS<T>
-    where
-        T: AsExpression<Text>,
-    {
-        type SqlType = Lquery;
-    }
-
-    impl<T, QS> ::diesel::SelectableExpression<QS> for LqueryFromTextS<T>
-    where
-        T: AsExpression<Text>,
-    {
-    }
-
-    impl<T, QS> ::diesel::AppearsOnTable<QS> for LqueryFromTextS<T>
-    where
-        T: AsExpression<Text>,
-    {
-    }
-
-    impl_query_id!(LqueryFromTextS<T>);
-
-    impl<T, DB> ::diesel::query_builder::QueryFragment<DB> for LqueryFromTextS<T>
-        where DB: ::diesel::backend::Backend,
-    for <'a> (&'a T) : ::diesel::query_builder::QueryFragment<DB>
-    {
-        fn walk_ast(&self, mut out: ::diesel::query_builder::AstPass<DB>) -> ::diesel::QueryResult<()> {
-            out.push_sql("(");
-            ::diesel::query_builder::QueryFragment::walk_ast(
-                &(&self.0), out.reborrow())?;
-            out.push_sql(")::lquery");
-            Ok(())
-
-        }
-    }
-
-    impl<T> ::diesel::expression::NonAggregate for LqueryFromTextS<T>
-        where T : ::diesel::expression::NonAggregate,
-    LqueryFromTextS<T> : Expression {}
 }
 
 pub use self::types::*;
