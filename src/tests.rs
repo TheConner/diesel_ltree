@@ -4,7 +4,7 @@ use diesel::select;
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
 use std::env;
-use super::{Ltree, LtreeExtensions, ltree_array, subltree, subpath, nlevel, index, text2ltree, ltree2text, lca};
+use super::{Ltree, LtreeExtensions, subltree, subpath, nlevel, index, text2ltree, ltree2text, lca};
 
 table! {
     use super::Ltree;
@@ -86,6 +86,7 @@ fn functions() {
     assert_eq!(result, Ok(6));
 }
 
+/*
 #[test]
 fn lcat() {
     let connection = get_connection();
@@ -94,4 +95,23 @@ fn lcat() {
         .get_result::<String>(&connection);
 
     assert_eq!(result, Ok("1.2".into()));
+}
+*/
+
+#[test]
+fn lcat_baby() {
+    use ::diesel::expression::functions::array3;
+    let connection = get_connection();
+
+    let result = my_tree::table
+        .select(ltree2text(lca(array3(
+            text2ltree("root.eukaryota.eukaryota.plantae"),
+            my_tree::path,
+            text2ltree("root.eukaryota.else"),
+        ))))
+        .filter(my_tree::path.eq(text2ltree("root.eukaryota.plantae")))
+        .first::<String>(&connection);
+
+    assert_eq!(result, Ok("root.eukaryota".into()));
+
 }

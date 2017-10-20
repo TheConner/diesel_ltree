@@ -40,7 +40,6 @@ mod functions {
     sql_function!(text2ltree, text2ltree_t, (text: Text) -> Ltree);
     sql_function!(ltree2text, ltree2text_t, (ltree: Ltree) -> Text);
     sql_function!(lca, lca_t, (ltrees: Array<Ltree>) -> Ltree);
-    sql_array_function!(ltree_array, ltree_array_t, Ltree);
 }
 
 mod dsl {
@@ -52,6 +51,7 @@ mod dsl {
 
         diesel_infix_operator!(Contains, " @> ", backend: Pg);
         diesel_infix_operator!(ContainedBy, " <@ ", backend: Pg);
+        diesel_infix_operator!(Equals, " = ", backend: Pg);
     }
 
     use self::predicates::*;
@@ -66,6 +66,10 @@ mod dsl {
             other: T,
         ) -> ContainedBy<Self, T::Expression> {
             ContainedBy::new(self, other.as_expression())
+        }
+
+        fn eq<T: AsExpression<Ltree>>(self, other: T) -> Equals<Self, T::Expression> {
+            Equals::new(self, other.as_expression())
         }
     }
 
