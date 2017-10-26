@@ -4,8 +4,8 @@ use diesel::select;
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
 use std::env;
-use super::{Ltree, LtreeExtensions, LqueryExtensions, LtxtqueryExtensions, subltree, subpath,
-            nlevel, index, text2ltree, ltree2text, lquery, ltxtquery};
+use super::{index, lquery, ltxtquery, nlevel, subltree, subpath, LqueryExtensions, Ltree,
+            LtreeExtensions, LtxtqueryExtensions, ltree2text, text2ltree};
 
 table! {
     use super::Ltree;
@@ -55,7 +55,7 @@ fn base_operations() {
             "root.bacteria",
             "root.eukaryota.plantae",
             "root.eukaryota.plantae.nematophyta",
-            "root.eukaryota.plantae.chlorophyta",
+            "root.eukaryota.plantae.chlorophyta"
         ]
     );
 }

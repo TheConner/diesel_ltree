@@ -15,11 +15,8 @@ mod types {
     pub struct Ltree;
 
     impl HasSqlType<Ltree> for Pg {
-        fn metadata(_: &PgMetadataLookup) -> PgTypeMetadata {
-            PgTypeMetadata {
-                oid: 24754,
-                array_oid: 24757,
-            }
+        fn metadata(lookup: &PgMetadataLookup) -> PgTypeMetadata {
+            lookup.lookup_type("ltree")
         }
     }
 
@@ -29,11 +26,8 @@ mod types {
     pub struct Lquery;
 
     impl HasSqlType<Lquery> for Pg {
-        fn metadata(_: &PgMetadataLookup) -> PgTypeMetadata {
-            PgTypeMetadata {
-                oid: 24808,
-                array_oid: 24811,
-            }
+        fn metadata(lookup: &PgMetadataLookup) -> PgTypeMetadata {
+            lookup.lookup_type("lquery")
         }
     }
 
@@ -44,11 +38,8 @@ mod types {
     pub struct Ltxtquery;
 
     impl HasSqlType<Ltxtquery> for Pg {
-        fn metadata(_: &PgMetadataLookup) -> PgTypeMetadata {
-            PgTypeMetadata {
-                oid: 24824,
-                array_oid: 24827,
-            }
+        fn metadata(lookup: &PgMetadataLookup) -> PgTypeMetadata {
+            lookup.lookup_type("ltxtquery")
         }
     }
 
@@ -57,7 +48,7 @@ mod types {
 
 mod functions {
     use types::*;
-    use diesel::{AppearsOnTable, SelectableExpression, QueryResult};
+    use diesel::{AppearsOnTable, QueryResult, SelectableExpression};
     use diesel::backend::Backend;
     use diesel::types::*;
     use diesel::expression::{AsExpression, Expression, NonAggregate};
