@@ -2,4 +2,4 @@
 
 Adds support for the `ltree` PostgreSQL extension type to Diesel.
 
-Supports everything except functions on arrays of ltrees/lqueries ([#2](https://github.com/kivikakk/diesel_ltree/issue/2)).
+Supports everything except functions on arrays of ltrees/lqueries ([#2](https://github.com/kivikakk/diesel_ltree/issues/2)).
