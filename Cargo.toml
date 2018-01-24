@@ -1,6 +1,6 @@
 [package]
 name = "diesel_ltree"
-version = "0.1.3"
+version = "0.2.0"
 authors = ["Ashe Connor <ashe@kivikakk.ee>"]
 description = "Adds support for the PostgreSQL ltree extension to Diesel"
 license = "MIT"
