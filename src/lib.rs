@@ -30,7 +30,6 @@ mod types {
 
     impl_query_id!(Lquery);
 
-
     #[derive(Clone, Copy)]
     pub struct Ltxtquery;
 
@@ -64,6 +63,7 @@ mod dsl {
     use types::*;
     use diesel::expression::{AsExpression, Expression};
     use diesel::types::SingleValue;
+    use diesel::sql_types::Array;
 
     mod predicates {
         use types::*;
@@ -72,6 +72,7 @@ mod dsl {
         diesel_infix_operator!(Contains, " @> ", backend: Pg);
         diesel_infix_operator!(ContainedBy, " <@ ", backend: Pg);
         diesel_infix_operator!(Matches, " ~ ", backend: Pg);
+        diesel_infix_operator!(MatchesAny, " ? ", backend: Pg);
         diesel_infix_operator!(TMatches, " @ ", backend: Pg);
         diesel_infix_operator!(Concat, " || ", Ltree, backend: Pg);
     }
@@ -96,6 +97,13 @@ mod dsl {
             Matches::new(self, other.as_expression())
         }
 
+        fn matches_any<T: AsExpression<Array<Lquery>>>(
+            self,
+            other: T,
+        ) -> MatchesAny<Self, T::Expression> {
+            MatchesAny::new(self, other.as_expression())
+        }
+
         fn tmatches<T: AsExpression<Ltxtquery>>(self, other: T) -> TMatches<Self, T::Expression> {
             TMatches::new(self, other.as_expression())
         }
@@ -111,6 +119,12 @@ mod dsl {
         }
     }
 
+    pub trait LqueryArrayExtensions: Expression<SqlType = Array<Lquery>> + Sized {
+        fn matches_any<T: AsExpression<Ltree>>(self, other: T) -> MatchesAny<Self, T::Expression> {
+            MatchesAny::new(self, other.as_expression())
+        }
+    }
+
     pub trait LtxtqueryExtensions: Expression<SqlType = Ltxtquery> + Sized {
         fn tmatches<T: AsExpression<Ltree>>(self, other: T) -> TMatches<Self, T::Expression> {
             TMatches::new(self, other.as_expression())
@@ -119,6 +133,7 @@ mod dsl {
 
     impl<T: Expression<SqlType = Ltree>> LtreeExtensions for T {}
     impl<T: Expression<SqlType = Lquery>> LqueryExtensions for T {}
+    impl<T: Expression<SqlType = Array<Lquery>>> LqueryArrayExtensions for T {}
     impl<T: Expression<SqlType = Ltxtquery>> LtxtqueryExtensions for T {}
 }
 

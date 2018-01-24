@@ -4,8 +4,8 @@ use diesel::select;
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
 use std::env;
-use super::{index, lquery, ltxtquery, nlevel, subltree, subpath, LqueryExtensions, Ltree,
-            LtreeExtensions, LtxtqueryExtensions, ltree2text, text2ltree};
+use super::{index, lquery, ltxtquery, nlevel, subltree, subpath, LqueryArrayExtensions,
+            LqueryExtensions, Ltree, LtreeExtensions, LtxtqueryExtensions, ltree2text, text2ltree};
 
 table! {
     use super::Ltree;
@@ -60,7 +60,6 @@ fn base_operations() {
     );
 }
 
-
 #[test]
 fn functions() {
     let connection = get_connection();
@@ -89,6 +88,8 @@ fn functions() {
 
 #[test]
 fn operators() {
+    use diesel::dsl::array;
+
     let connection = get_connection();
 
     let result = select((
@@ -114,6 +115,18 @@ fn operators() {
         lquery("foo_bar%*").matches(text2ltree("foo1_br2_baz")),
     )).get_result::<(bool, bool, bool, bool)>(&connection);
     assert_eq!(result, Ok((true, false, true, false)));
+
+    let result = select((
+        text2ltree("foo_bar_baz").matches_any(array((lquery("foo_bar%"), lquery("foo_bat%")))),
+        text2ltree("foo_bar_baz").matches_any(array((lquery("foo_bat%"),))),
+    )).get_result::<(bool, bool)>(&connection);
+    assert_eq!(result, Ok((true, false)));
+
+    let result = select((
+        array((lquery("foo_bar%"), lquery("foo_bat%"))).matches_any(text2ltree("foo_bar_baz")),
+        array((lquery("foo_bat%"),)).matches_any(text2ltree("foo_bar_baz")),
+    )).get_result::<(bool, bool)>(&connection);
+    assert_eq!(result, Ok((true, false)));
 
     let q = ltxtquery("Europe & Russia*@ & !Transportation");
     let result = select((
