@@ -2,9 +2,10 @@ extern crate dotenv;
 
 use diesel::select;
 use diesel::prelude::*;
+use diesel::dsl::array;
 use diesel::pg::PgConnection;
 use std::env;
-use super::{index, lquery, ltxtquery, nlevel, subltree, subpath, LqueryArrayExtensions,
+use super::{index, lca, lquery, ltxtquery, nlevel, subltree, subpath, LqueryArrayExtensions,
             LqueryExtensions, Ltree, LtreeExtensions, LtxtqueryExtensions, ltree2text, text2ltree};
 
 table! {
@@ -66,30 +67,30 @@ fn functions() {
 
     let result = select(ltree2text(subltree(text2ltree("Top.Child1.Child2"), 1, 2)))
         .get_result::<String>(&connection);
-
     assert_eq!(result, Ok("Child1".into()));
 
     let result = select(ltree2text(subpath(text2ltree("Top.Child1.Child2"), 0, 2)))
         .get_result::<String>(&connection);
-
     assert_eq!(result, Ok("Top.Child1".into()));
 
     let result = select(nlevel(text2ltree("Top.Child1.Child2"))).get_result::<i32>(&connection);
-
     assert_eq!(result, Ok(3));
 
     let result = select(index(
         text2ltree("0.1.2.3.5.4.5.6.8.5.6.8"),
         text2ltree("5.6"),
     )).get_result::<i32>(&connection);
-
     assert_eq!(result, Ok(6));
+
+    let result = select(ltree2text(lca(array((
+        text2ltree("1.2.2.3"),
+        text2ltree("1.2.3"),
+    ))))).get_result::<String>(&connection);
+    assert_eq!(result, Ok("1.2".into()));
 }
 
 #[test]
 fn operators() {
-    use diesel::dsl::array;
-
     let connection = get_connection();
 
     let result = select((
@@ -123,8 +124,8 @@ fn operators() {
     assert_eq!(result, Ok((true, false)));
 
     let result = select((
-        array((lquery("foo_bar%"), lquery("foo_bat%"))).matches_any(text2ltree("foo_bar_baz")),
-        array((lquery("foo_bat%"),)).matches_any(text2ltree("foo_bar_baz")),
+        array((lquery("foo_bar%"), lquery("foo_bat%"))).any_matches(text2ltree("foo_bar_baz")),
+        array((lquery("foo_bat%"),)).any_matches(text2ltree("foo_bar_baz")),
     )).get_result::<(bool, bool)>(&connection);
     assert_eq!(result, Ok((true, false)));
 

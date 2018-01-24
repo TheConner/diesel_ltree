@@ -54,6 +54,7 @@ mod functions {
     // sql_function!(index, index_t, (a: Ltree, b: Ltree, offset: Int4) -> Int4);
     sql_function!(text2ltree, text2ltree_t, (text: Text) -> Ltree);
     sql_function!(ltree2text, ltree2text_t, (ltree: Ltree) -> Text);
+    sql_function!(lca, lca_t, (ltrees: Array<Ltree>) -> Ltree);
 
     sql_function!(lquery, lquery_t, (x: Text) -> Lquery);
     sql_function!(ltxtquery, ltxtquery_t, (x: Text) -> Ltxtquery);
@@ -120,7 +121,7 @@ mod dsl {
     }
 
     pub trait LqueryArrayExtensions: Expression<SqlType = Array<Lquery>> + Sized {
-        fn matches_any<T: AsExpression<Ltree>>(self, other: T) -> MatchesAny<Self, T::Expression> {
+        fn any_matches<T: AsExpression<Ltree>>(self, other: T) -> MatchesAny<Self, T::Expression> {
             MatchesAny::new(self, other.as_expression())
         }
     }
