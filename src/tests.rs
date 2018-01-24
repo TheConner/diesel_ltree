@@ -80,6 +80,7 @@ fn functions() {
     let result = select(index(
         text2ltree("0.1.2.3.5.4.5.6.8.5.6.8"),
         text2ltree("5.6"),
+        0,
     )).get_result::<i32>(&connection);
     assert_eq!(result, Ok(6));
 

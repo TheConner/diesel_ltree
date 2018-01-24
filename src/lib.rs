@@ -50,8 +50,8 @@ mod functions {
     sql_function!(subpath, subpath_t, (ltree: Ltree, offset: Int4, len: Int4) -> Ltree);
     // sql_function!(subpath, subpath_t, (ltree: Ltree, offset: Int4) -> Ltree);
     sql_function!(nlevel, nlevel_t, (ltree: Ltree) -> Int4);
-    sql_function!(index, index_t, (a: Ltree, b: Ltree) -> Int4);
-    // sql_function!(index, index_t, (a: Ltree, b: Ltree, offset: Int4) -> Int4);
+    //sql_function!(index, index_t, (a: Ltree, b: Ltree) -> Int4);
+    sql_function!(index, index_t, (a: Ltree, b: Ltree, offset: Int4) -> Int4);
     sql_function!(text2ltree, text2ltree_t, (text: Text) -> Ltree);
     sql_function!(ltree2text, ltree2text_t, (ltree: Ltree) -> Text);
     sql_function!(lca, lca_t, (ltrees: Array<Ltree>) -> Ltree);
