@@ -76,6 +76,10 @@ mod dsl {
         diesel_infix_operator!(MatchesAny, " ? ", backend: Pg);
         diesel_infix_operator!(TMatches, " @ ", backend: Pg);
         diesel_infix_operator!(Concat, " || ", Ltree, backend: Pg);
+        diesel_infix_operator!(FirstContains, " ?@> ", Ltree, backend: Pg);
+        diesel_infix_operator!(FirstContainedBy, " ?<@ ", Ltree, backend: Pg);
+        diesel_infix_operator!(FirstMatches, " ?~ ", Ltree, backend: Pg);
+        diesel_infix_operator!(FirstTMatches, " ?@ ", Ltree, backend: Pg);
     }
 
     use self::predicates::*;
@@ -87,7 +91,21 @@ mod dsl {
             Contains::new(self, other.as_expression())
         }
 
+        fn contains_any<T: AsExpression<Array<Ltree>>>(
+            self,
+            other: T,
+        ) -> Contains<Self, T::Expression> {
+            Contains::new(self, other.as_expression())
+        }
+
         fn contained_by<T: AsExpression<Ltree>>(
+            self,
+            other: T,
+        ) -> ContainedBy<Self, T::Expression> {
+            ContainedBy::new(self, other.as_expression())
+        }
+
+        fn contained_by_any<T: AsExpression<Array<Ltree>>>(
             self,
             other: T,
         ) -> ContainedBy<Self, T::Expression> {
@@ -114,8 +132,74 @@ mod dsl {
         }
     }
 
+    pub trait LtreeArrayExtensions: Expression<SqlType = Array<Ltree>> + Sized {
+        fn any_contains<T: AsExpression<Ltree>>(self, other: T) -> Contains<Self, T::Expression> {
+            Contains::new(self, other.as_expression())
+        }
+
+        fn any_contained_by<T: AsExpression<Ltree>>(
+            self,
+            other: T,
+        ) -> ContainedBy<Self, T::Expression> {
+            ContainedBy::new(self, other.as_expression())
+        }
+
+        fn any_matches<T: AsExpression<Lquery>>(self, other: T) -> Matches<Self, T::Expression> {
+            Matches::new(self, other.as_expression())
+        }
+
+        fn any_matches_any<T: AsExpression<Array<Lquery>>>(
+            self,
+            other: T,
+        ) -> MatchesAny<Self, T::Expression> {
+            MatchesAny::new(self, other.as_expression())
+        }
+
+        fn any_tmatches<T: AsExpression<Ltxtquery>>(
+            self,
+            other: T,
+        ) -> TMatches<Self, T::Expression> {
+            TMatches::new(self, other.as_expression())
+        }
+
+        fn first_contains<T: AsExpression<Ltree>>(
+            self,
+            other: T,
+        ) -> FirstContains<Self, T::Expression> {
+            FirstContains::new(self, other.as_expression())
+        }
+
+        fn first_contained_by<T: AsExpression<Ltree>>(
+            self,
+            other: T,
+        ) -> FirstContainedBy<Self, T::Expression> {
+            FirstContainedBy::new(self, other.as_expression())
+        }
+
+        fn first_matches<T: AsExpression<Lquery>>(
+            self,
+            other: T,
+        ) -> FirstMatches<Self, T::Expression> {
+            FirstMatches::new(self, other.as_expression())
+        }
+
+        fn first_tmatches<T: AsExpression<Ltxtquery>>(
+            self,
+            other: T,
+        ) -> FirstTMatches<Self, T::Expression> {
+            FirstTMatches::new(self, other.as_expression())
+        }
+    }
+
     pub trait LqueryExtensions: Expression<SqlType = Lquery> + Sized {
         fn matches<T: AsExpression<Ltree>>(self, other: T) -> Matches<Self, T::Expression> {
+            Matches::new(self, other.as_expression())
+        }
+
+        fn matches_any<T: AsExpression<Array<Ltree>>>(
+            self,
+            other: T,
+        ) -> Matches<Self, T::Expression> {
             Matches::new(self, other.as_expression())
         }
     }
@@ -124,15 +208,30 @@ mod dsl {
         fn any_matches<T: AsExpression<Ltree>>(self, other: T) -> MatchesAny<Self, T::Expression> {
             MatchesAny::new(self, other.as_expression())
         }
+
+        fn any_matches_any<T: AsExpression<Array<Ltree>>>(
+            self,
+            other: T,
+        ) -> MatchesAny<Self, T::Expression> {
+            MatchesAny::new(self, other.as_expression())
+        }
     }
 
     pub trait LtxtqueryExtensions: Expression<SqlType = Ltxtquery> + Sized {
         fn tmatches<T: AsExpression<Ltree>>(self, other: T) -> TMatches<Self, T::Expression> {
             TMatches::new(self, other.as_expression())
         }
+
+        fn tmatches_any<T: AsExpression<Array<Ltree>>>(
+            self,
+            other: T,
+        ) -> TMatches<Self, T::Expression> {
+            TMatches::new(self, other.as_expression())
+        }
     }
 
     impl<T: Expression<SqlType = Ltree>> LtreeExtensions for T {}
+    impl<T: Expression<SqlType = Array<Ltree>>> LtreeArrayExtensions for T {}
     impl<T: Expression<SqlType = Lquery>> LqueryExtensions for T {}
     impl<T: Expression<SqlType = Array<Lquery>>> LqueryArrayExtensions for T {}
     impl<T: Expression<SqlType = Ltxtquery>> LtxtqueryExtensions for T {}

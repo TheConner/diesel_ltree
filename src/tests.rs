@@ -6,7 +6,8 @@ use diesel::dsl::array;
 use diesel::pg::PgConnection;
 use std::env;
 use super::{index, lca, lquery, ltxtquery, nlevel, subltree, subpath, LqueryArrayExtensions,
-            LqueryExtensions, Ltree, LtreeExtensions, LtxtqueryExtensions, ltree2text, text2ltree};
+            LqueryExtensions, Ltree, LtreeArrayExtensions, LtreeExtensions, LtxtqueryExtensions,
+            ltree2text, text2ltree};
 
 table! {
     use super::Ltree;
@@ -140,4 +141,48 @@ fn operators() {
     let result = select(ltree2text(text2ltree("a.b").concat(text2ltree("c.d"))))
         .get_result::<String>(&connection);
     assert_eq!(result, Ok("a.b.c.d".into()));
+
+    let result = select((
+        text2ltree("a.b").contained_by_any(array((text2ltree("a"), text2ltree("a.b.c")))),
+        array((text2ltree("a"), text2ltree("a.b.c"))).any_contains(text2ltree("a.b")),
+        text2ltree("a.b").contains_any(array((text2ltree("a"), text2ltree("a.b.c")))),
+        array((text2ltree("a"), text2ltree("a.b.c"))).any_contained_by(text2ltree("a.b")),
+    )).get_result::<(bool, bool, bool, bool)>(&connection);
+    assert_eq!(result, Ok((true, true, true, true)));
+
+    let result = select((
+        array((text2ltree("a"), text2ltree("a.b"))).any_matches(lquery("a%")),
+        lquery("a%").matches_any(array((text2ltree("a"), text2ltree("a.b")))),
+    )).get_result::<(bool, bool)>(&connection);
+    assert_eq!(result, Ok((true, true)));
+
+    let result = select((
+        array((text2ltree("a"), text2ltree("a.b")))
+            .any_matches_any(array((lquery("a%"), lquery("b%")))),
+        array((lquery("a%"), lquery("b%")))
+            .any_matches_any(array((text2ltree("a"), text2ltree("a.b")))),
+    )).get_result::<(bool, bool)>(&connection);
+    assert_eq!(result, Ok((true, true)));
+
+    let result = select((
+        array((text2ltree("a"), text2ltree("a.b"))).any_tmatches(ltxtquery("a")),
+        ltxtquery("a").tmatches_any(array((text2ltree("a"), text2ltree("a.b")))),
+    )).get_result::<(bool, bool)>(&connection);
+    assert_eq!(result, Ok((true, true)));
+
+    let result = select((
+        ltree2text(array((text2ltree("a.b.c"), text2ltree("a"))).first_contains(text2ltree("a.b"))),
+        ltree2text(
+            array((text2ltree("a"), text2ltree("a.b.c"))).first_contained_by(text2ltree("a.b")),
+        ),
+    )).get_result::<(String, String)>(&connection);
+    assert_eq!(result, Ok(("a".into(), "a.b.c".into())));
+
+    let result = select((
+        ltree2text(array((text2ltree("a.b.c"), text2ltree("a"))).first_matches(lquery("a%"))),
+        ltree2text(
+            array((text2ltree("a"), text2ltree("a.b.c"))).first_tmatches(ltxtquery("a & b")),
+        ),
+    )).get_result::<(String, String)>(&connection);
+    assert_eq!(result, Ok(("a".into(), "a.b.c".into())));
 }
