@@ -1,8 +1,5 @@
 #[macro_use]
 extern crate diesel;
-#[cfg(test)]
-#[macro_use]
-extern crate diesel_codegen;
 
 #[cfg(test)]
 mod tests;
@@ -48,7 +45,7 @@ mod types {
 
 mod functions {
     use types::*;
-    use diesel::types::*;
+    use diesel::sql_types::*;
 
     sql_function!(subltree, subltree_t, (ltree: Ltree, start: Int4, end: Int4) -> Ltree);
     sql_function!(subpath, subpath_t, (ltree: Ltree, offset: Int4, len: Int4) -> Ltree);

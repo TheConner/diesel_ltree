@@ -9,7 +9,7 @@ use super::{index, lquery, ltxtquery, nlevel, subltree, subpath, LqueryExtension
 
 table! {
     use super::Ltree;
-    use diesel::types::*;
+    use diesel::sql_types::*;
 
     my_tree (id) {
         id -> Int4,
