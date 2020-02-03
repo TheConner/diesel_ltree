@@ -8,7 +8,7 @@ mod types {
     use diesel::pg::{Pg, PgMetadataLookup, PgTypeMetadata};
     use diesel::types::HasSqlType;
 
-    #[derive(Clone, Copy)]
+    #[derive(Clone, Copy, QueryId)]
     pub struct Ltree;
 
     impl HasSqlType<Ltree> for Pg {
@@ -17,9 +17,7 @@ mod types {
         }
     }
 
-    impl_query_id!(Ltree);
-
-    #[derive(Clone, Copy)]
+    #[derive(Clone, Copy, QueryId)]
     pub struct Lquery;
 
     impl HasSqlType<Lquery> for Pg {
@@ -28,9 +26,7 @@ mod types {
         }
     }
 
-    impl_query_id!(Lquery);
-
-    #[derive(Clone, Copy)]
+    #[derive(Clone, Copy, QueryId)]
     pub struct Ltxtquery;
 
     impl HasSqlType<Ltxtquery> for Pg {
@@ -38,26 +34,24 @@ mod types {
             lookup.lookup_type("ltxtquery")
         }
     }
-
-    impl_query_id!(Ltxtquery);
 }
 
 mod functions {
     use types::*;
     use diesel::sql_types::*;
 
-    sql_function!(subltree, subltree_t, (ltree: Ltree, start: Int4, end: Int4) -> Ltree);
-    sql_function!(subpath, subpath_t, (ltree: Ltree, offset: Int4, len: Int4) -> Ltree);
-    // sql_function!(subpath, subpath_t, (ltree: Ltree, offset: Int4) -> Ltree);
-    sql_function!(nlevel, nlevel_t, (ltree: Ltree) -> Int4);
-    //sql_function!(index, index_t, (a: Ltree, b: Ltree) -> Int4);
-    sql_function!(index, index_t, (a: Ltree, b: Ltree, offset: Int4) -> Int4);
-    sql_function!(text2ltree, text2ltree_t, (text: Text) -> Ltree);
-    sql_function!(ltree2text, ltree2text_t, (ltree: Ltree) -> Text);
-    sql_function!(lca, lca_t, (ltrees: Array<Ltree>) -> Ltree);
+    sql_function!(fn subltree(ltree: Ltree, start: Int4, end: Int4) -> Ltree);
+    sql_function!(fn subpath(ltree: Ltree, offset: Int4, len: Int4) -> Ltree);
+    // sql_function!(fn subpath(ltree: Ltree, offset: Int4) -> Ltree);
+    sql_function!(fn nlevel(ltree: Ltree) -> Int4);
+    //sql_function!(fn index(a: Ltree, b: Ltree) -> Int4);
+    sql_function!(fn index(a: Ltree, b: Ltree, offset: Int4) -> Int4);
+    sql_function!(fn text2ltree(text: Text) -> Ltree);
+    sql_function!(fn ltree2text(ltree: Ltree) -> Text);
+    sql_function!(fn lca(ltrees: Array<Ltree>) -> Ltree);
 
-    sql_function!(lquery, lquery_t, (x: Text) -> Lquery);
-    sql_function!(ltxtquery, ltxtquery_t, (x: Text) -> Ltxtquery);
+    sql_function!(fn lquery(x: Text) -> Lquery);
+    sql_function!(fn ltxtquery(x: Text) -> Ltxtquery);
 }
 
 mod dsl {
