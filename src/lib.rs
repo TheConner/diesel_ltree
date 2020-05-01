@@ -16,6 +16,17 @@ mod types {
         type SqlType = Ltree;
     }
 
+    impl<ST, DB> diesel::types::FromSql<ST, DB> for Ltree
+    where
+        String: diesel::types::FromSql<ST, DB>,
+        DB: diesel::backend::Backend,
+        DB: diesel::types::HasSqlType<ST>,
+    {
+        fn from_sql(raw: Option<&DB::RawValue>) -> deserialize::Result<Self> {
+            diesel::types::FromSql::<ST, DB>::from_sql(raw).map(Ltree)
+        }
+    }
+
     impl<DB> QueryFragment<DB> for Ltree
     where
         DB: diesel::backend::Backend,
