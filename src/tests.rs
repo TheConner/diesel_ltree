@@ -34,6 +34,38 @@ fn get_connection() -> PgConnection {
     PgConnection::establish(&database_url).expect("Error connecting to TEST_DATABASE_URL")
 }
 
+// Uncomment this test AFTER postgres adds binary protocol support for Ltree
+// since, until then, we MUST instead transmit via the Text protocol
+// #[test]
+// fn base_operations_without_converting_to_text_first() {
+//     let connection = get_connection();
+//
+//     let results = my_tree::table
+//         .select((my_tree::id, my_tree::path))
+//         .filter(
+//             my_tree::path
+//                 .contained_by(text2ltree("root.eukaryota.plantae"))
+//                 .or(my_tree::path.contains(text2ltree("root.bacteria"))),
+//         )
+//         .order(my_tree::id)
+//         .load::<MyTree>(&connection)
+//         .unwrap()
+//         .into_iter()
+//         .map(|t| t.path)
+//         .collect::<Vec<_>>();
+//
+//     assert_eq!(
+//         results,
+//         [
+//             Ltree("root".to_string()),
+//             Ltree("root.bacteria".to_string()),
+//             Ltree("root.eukaryota.plantae".to_string()),
+//             Ltree("root.eukaryota.plantae.nematophyta".to_string()),
+//             Ltree("root.eukaryota.plantae.chlorophyta".to_string())
+//         ]
+//     );
+// }
+
 #[test]
 fn base_operations() {
     let connection = get_connection();
@@ -203,18 +235,3 @@ fn operators() {
     .get_result::<(String, String)>(&connection);
     assert_eq!(result, Ok(("a".into(), "a.b.c".into())));
 }
-
-// #[test]
-// fn does_roundtrip() {
-//     let connection = get_connection();
-//     let obj = MyEntity { id: MyId("WooHoo".into()), val: 1 };
-//
-//     diesel::insert_into(my_entities::table)
-//         .values(&obj)
-//         .execute(&connection)
-//         .expect("Couldn't insert struct into my_entities");
-//
-//     let found: Vec<MyEntity> = my_entities::table.load(&connection).unwrap();
-//     println!("found: {:?}", found);
-//     assert_eq!(found[0], obj);
-// }
