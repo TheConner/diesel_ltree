@@ -6,3 +6,6 @@ Adds support for the `ltree` PostgreSQL extension type to Diesel, supporting all
 
 Binary protocol support for Ltrees (has been committed)[https://commitfest.postgresql.org/24/2242/], but not released as of 2020.04.29. As such, the only option for Diesel, which uses the Postgres binary protocol (likewise for rust_postgres), is to treat the transmittion of Ltrees as Postgres `text`, until this commit goes live. This crate currently transmits Ltree paths as `text`, then casts them to `ltree`.
 
+## Selecting Ltrees
+
+Until binary protocol support is added for Ltrees, you need to select `ltree2text(my_tree)`.
