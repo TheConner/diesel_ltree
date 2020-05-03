@@ -5,40 +5,71 @@ extern crate diesel;
 mod tests;
 
 mod types {
-    use diesel::pg::{Pg, PgMetadataLookup, PgTypeMetadata};
-    use diesel::types::HasSqlType;
+    use diesel::query_builder::{AstPass, QueryFragment};
+    use diesel::sql_types::Text;
+    use diesel::{deserialize, AppearsOnTable, Expression, QueryResult, SelectableExpression};
 
-    #[derive(Clone, Copy, QueryId)]
-    pub struct Ltree;
+    #[derive(SqlType, QueryId, FromSqlRow, Clone, Debug, PartialEq)]
+    #[postgres(type_name = "ltree")]
+    pub struct Ltree(pub String);
 
-    impl HasSqlType<Ltree> for Pg {
-        fn metadata(lookup: &PgMetadataLookup) -> PgTypeMetadata {
-            lookup.lookup_type("ltree")
+    impl Expression for Ltree {
+        type SqlType = Ltree;
+    }
+
+    // // Commented out until Postgres supports binary-protocol for Ltree
+    // // https://commitfest.postgresql.org/24/2242/
+    // // https://github.com/npgsql/npgsql/issues/699
+    // impl<DB> diesel::types::FromSql<Ltree /*via postres(type_name="ltree")*/, DB> for Ltree
+    // /*this is the local ltree type*/
+    // where
+    //     String: diesel::types::FromSql<Text, DB>,
+    //     DB: diesel::backend::Backend,
+    //     DB: diesel::types::HasSqlType<Ltree>,
+    // {
+    //     fn from_sql(raw: Option<&DB::RawValue>) -> deserialize::Result<Self> {
+    //         String::from_sql(raw).map(Ltree)
+    //     }
+    // }
+
+    impl<DB> diesel::types::FromSql<diesel::sql_types::Text, DB> for Ltree
+    where
+        String: diesel::types::FromSql<Text, DB>,
+        DB: diesel::backend::Backend,
+        DB: diesel::types::HasSqlType<Text>,
+    {
+        fn from_sql(raw: Option<&DB::RawValue>) -> deserialize::Result<Self> {
+            String::from_sql(raw).map(Ltree)
         }
     }
 
-    #[derive(Clone, Copy, QueryId)]
+    impl<DB> QueryFragment<DB> for Ltree
+    where
+        DB: diesel::backend::Backend,
+    {
+        fn walk_ast(&self, mut out: AstPass<DB>) -> QueryResult<()> {
+            // can remove this function after ltree binary-protocol support is added by postgres
+            out.push_bind_param::<diesel::sql_types::Text, _>(&self.0)?; // can (probably?) change diesel::sql_types::Text to diesel::sql_types::Ltree after Ltree is supported in binary protocol
+            out.push_sql(&"::text::ltree"); // cast the text to an ltree in the query, so that the client can sent the ltree as text
+            Ok(())
+        }
+    }
+    impl<QS> SelectableExpression<QS> for Ltree {}
+    impl<QS> AppearsOnTable<QS> for Ltree {}
+    impl diesel::expression::NonAggregate for Ltree {}
+
+    #[derive(SqlType, Clone, Copy, QueryId)]
+    #[postgres(type_name = "lquery")]
     pub struct Lquery;
 
-    impl HasSqlType<Lquery> for Pg {
-        fn metadata(lookup: &PgMetadataLookup) -> PgTypeMetadata {
-            lookup.lookup_type("lquery")
-        }
-    }
-
-    #[derive(Clone, Copy, QueryId)]
+    #[derive(SqlType, Clone, Copy, QueryId)]
+    #[postgres(type_name = "ltxtquery")]
     pub struct Ltxtquery;
-
-    impl HasSqlType<Ltxtquery> for Pg {
-        fn metadata(lookup: &PgMetadataLookup) -> PgTypeMetadata {
-            lookup.lookup_type("ltxtquery")
-        }
-    }
 }
 
 mod functions {
-    use types::*;
     use diesel::sql_types::*;
+    use types::*;
 
     sql_function!(fn subltree(ltree: Ltree, start: Int4, end: Int4) -> Ltree);
     sql_function!(fn subpath(ltree: Ltree, offset: Int4, len: Int4) -> Ltree);
@@ -55,14 +86,13 @@ mod functions {
 }
 
 mod dsl {
-    use types::*;
     use diesel::expression::{AsExpression, Expression};
-    use diesel::types::SingleValue;
     use diesel::sql_types::Array;
+    use types::*;
 
     mod predicates {
-        use types::*;
         use diesel::pg::Pg;
+        use types::*;
 
         diesel_infix_operator!(Contains, " @> ", backend: Pg);
         diesel_infix_operator!(ContainedBy, " <@ ", backend: Pg);
@@ -77,8 +107,6 @@ mod dsl {
     }
 
     use self::predicates::*;
-
-    impl SingleValue for Ltree {}
 
     pub trait LtreeExtensions: Expression<SqlType = Ltree> + Sized {
         fn contains<T: AsExpression<Ltree>>(self, other: T) -> Contains<Self, T::Expression> {
@@ -231,6 +259,6 @@ mod dsl {
     impl<T: Expression<SqlType = Ltxtquery>> LtxtqueryExtensions for T {}
 }
 
-pub use self::types::*;
-pub use self::functions::*;
 pub use self::dsl::*;
+pub use self::functions::*;
+pub use self::types::*;
