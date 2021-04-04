@@ -11,10 +11,6 @@ repository = "https://github.com/kivikakk/diesel_ltree"
 [dependencies]
 diesel = { version = "1.0", features = ["postgres"] }
 
-[build-dependencies]
-dotenv = "0.10"
-diesel = { version = "1.0", features = ["postgres"] }
-
 [dev-dependencies]
-dotenv = "0.10"
+dotenv = "0.15"
 diesel_migrations = "1.0"
