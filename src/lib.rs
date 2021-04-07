@@ -32,11 +32,11 @@ mod types {
     //     }
     // }
 
-    impl<DB> diesel::types::FromSql<diesel::sql_types::Text, DB> for Ltree
+    impl<DB> diesel::deserialize::FromSql<diesel::sql_types::Text, DB> for Ltree
     where
-        String: diesel::types::FromSql<Text, DB>,
+        String: diesel::deserialize::FromSql<Text, DB>,
         DB: diesel::backend::Backend,
-        DB: diesel::types::HasSqlType<Text>,
+        DB: diesel::sql_types::HasSqlType<Text>,
     {
         fn from_sql(raw: Option<&DB::RawValue>) -> deserialize::Result<Self> {
             String::from_sql(raw).map(Ltree)
