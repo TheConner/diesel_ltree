@@ -34,37 +34,35 @@ fn get_connection() -> PgConnection {
     PgConnection::establish(&database_url).expect("Error connecting to TEST_DATABASE_URL")
 }
 
-// Uncomment this test AFTER postgres adds binary protocol support for Ltree
-// since, until then, we MUST instead transmit via the Text protocol
-// #[test]
-// fn base_operations_without_converting_to_text_first() {
-//     let connection = get_connection();
-//
-//     let results = my_tree::table
-//         .select((my_tree::id, my_tree::path))
-//         .filter(
-//             my_tree::path
-//                 .contained_by(text2ltree("root.eukaryota.plantae"))
-//                 .or(my_tree::path.contains(text2ltree("root.bacteria"))),
-//         )
-//         .order(my_tree::id)
-//         .load::<MyTree>(&connection)
-//         .unwrap()
-//         .into_iter()
-//         .map(|t| t.path)
-//         .collect::<Vec<_>>();
-//
-//     assert_eq!(
-//         results,
-//         [
-//             Ltree("root".to_string()),
-//             Ltree("root.bacteria".to_string()),
-//             Ltree("root.eukaryota.plantae".to_string()),
-//             Ltree("root.eukaryota.plantae.nematophyta".to_string()),
-//             Ltree("root.eukaryota.plantae.chlorophyta".to_string())
-//         ]
-//     );
-// }
+#[test]
+fn base_operations_without_converting_to_text_first() {
+    let connection = get_connection();
+
+    let results = my_tree::table
+        .select((my_tree::id, my_tree::path))
+        .filter(
+            my_tree::path
+                .contained_by(text2ltree("root.eukaryota.plantae"))
+                .or(my_tree::path.contains(text2ltree("root.bacteria"))),
+        )
+        .order(my_tree::id)
+        .load::<MyTree>(&connection)
+        .unwrap()
+        .into_iter()
+        .map(|t| t.path)
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        results,
+        [
+            Ltree("root".to_string()),
+            Ltree("root.bacteria".to_string()),
+            Ltree("root.eukaryota.plantae".to_string()),
+            Ltree("root.eukaryota.plantae.nematophyta".to_string()),
+            Ltree("root.eukaryota.plantae.chlorophyta".to_string())
+        ]
+    );
+}
 
 #[test]
 fn base_operations() {
