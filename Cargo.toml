@@ -9,6 +9,7 @@ readme = "README.md"
 repository = "https://github.com/kivikakk/diesel_ltree"
 
 [dependencies]
+byteorder = "1.0"
 diesel = { version = "1.4", default-features = false, features = ["postgres"] }
 
 [dev-dependencies]

@@ -1,3 +1,4 @@
+extern crate byteorder;
 #[macro_use]
 extern crate diesel;
 
@@ -5,9 +6,12 @@ extern crate diesel;
 mod tests;
 
 mod types {
-    use diesel::query_builder::{AstPass, QueryFragment};
+    use std::io::Read;
+
+    use byteorder::ReadBytesExt;
+    use diesel::pg::Pg;
     use diesel::sql_types::Text;
-    use diesel::{deserialize, AppearsOnTable, Expression, QueryResult, SelectableExpression};
+    use diesel::{deserialize, AppearsOnTable, Expression, SelectableExpression};
 
     #[derive(SqlType, QueryId, FromSqlRow, Clone, Debug, PartialEq)]
     #[postgres(type_name = "ltree")]
@@ -17,20 +21,18 @@ mod types {
         type SqlType = Ltree;
     }
 
-    // // Commented out until Postgres supports binary-protocol for Ltree
-    // // https://commitfest.postgresql.org/24/2242/
-    // // https://github.com/npgsql/npgsql/issues/699
-    // impl<DB> diesel::types::FromSql<Ltree /*via postres(type_name="ltree")*/, DB> for Ltree
-    // /*this is the local ltree type*/
-    // where
-    //     String: diesel::types::FromSql<Text, DB>,
-    //     DB: diesel::backend::Backend,
-    //     DB: diesel::types::HasSqlType<Ltree>,
-    // {
-    //     fn from_sql(raw: Option<&DB::RawValue>) -> deserialize::Result<Self> {
-    //         String::from_sql(raw).map(Ltree)
-    //     }
-    // }
+    impl diesel::deserialize::FromSql<Ltree, Pg> for Ltree {
+        fn from_sql(raw: Option<&[u8]>) -> deserialize::Result<Self> {
+            let mut raw = not_none!(raw);
+
+            let version = raw.read_i8()?;
+            debug_assert_eq!(version, 1, "Unknown ltree binary protocol version.");
+
+            let mut buf = String::new();
+            raw.read_to_string(&mut buf)?;
+            Ok(Ltree(buf))
+        }
+    }
 
     impl<DB> diesel::deserialize::FromSql<diesel::sql_types::Text, DB> for Ltree
     where
@@ -43,17 +45,6 @@ mod types {
         }
     }
 
-    impl<DB> QueryFragment<DB> for Ltree
-    where
-        DB: diesel::backend::Backend,
-    {
-        fn walk_ast(&self, mut out: AstPass<DB>) -> QueryResult<()> {
-            // can remove this function after ltree binary-protocol support is added by postgres
-            out.push_bind_param::<diesel::sql_types::Text, _>(&self.0)?; // can (probably?) change diesel::sql_types::Text to diesel::sql_types::Ltree after Ltree is supported in binary protocol
-            out.push_sql(&"::text::ltree"); // cast the text to an ltree in the query, so that the client can sent the ltree as text
-            Ok(())
-        }
-    }
     impl<QS> SelectableExpression<QS> for Ltree {}
     impl<QS> AppearsOnTable<QS> for Ltree {}
     impl diesel::expression::NonAggregate for Ltree {}
