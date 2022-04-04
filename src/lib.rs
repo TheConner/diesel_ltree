@@ -5,23 +5,43 @@ extern crate diesel;
 #[cfg(test)]
 mod tests;
 
-mod types {
+pub mod sql_types {
+    #[derive(SqlType, QueryId)]
+    #[postgres(type_name = "ltree")]
+    pub struct Ltree;
+
+    #[derive(SqlType, Clone, Copy, QueryId)]
+    #[postgres(type_name = "lquery")]
+    pub struct Lquery;
+
+    #[derive(SqlType, Clone, Copy, QueryId)]
+    #[postgres(type_name = "ltxtquery")]
+    pub struct Ltxtquery;
+}
+
+pub mod values {
     use std::io::Read;
 
     use byteorder::ReadBytesExt;
+    use diesel::deserialize;
     use diesel::pg::Pg;
     use diesel::sql_types::Text;
-    use diesel::{deserialize, AppearsOnTable, Expression, SelectableExpression};
 
-    #[derive(SqlType, QueryId, FromSqlRow, Clone, Debug, PartialEq)]
-    #[postgres(type_name = "ltree")]
+    #[derive(Debug, PartialEq, Clone, FromSqlRow, AsExpression)]
+    #[sql_type = "crate::sql_types::Ltree"]
     pub struct Ltree(pub String);
 
-    impl Expression for Ltree {
-        type SqlType = Ltree;
+    impl diesel::serialize::ToSql<crate::sql_types::Ltree, Pg> for Ltree {
+        fn to_sql<W: std::io::Write>(
+            &self,
+            out: &mut diesel::serialize::Output<W, Pg>,
+        ) -> diesel::serialize::Result {
+            out.write_all(self.0.as_bytes())?;
+            Ok(diesel::serialize::IsNull::No)
+        }
     }
 
-    impl diesel::deserialize::FromSql<Ltree, Pg> for Ltree {
+    impl diesel::deserialize::FromSql<crate::sql_types::Ltree, Pg> for Ltree {
         fn from_sql(raw: Option<&[u8]>) -> deserialize::Result<Self> {
             let mut raw = not_none!(raw);
 
@@ -34,33 +54,35 @@ mod types {
         }
     }
 
-    impl<DB> diesel::deserialize::FromSql<diesel::sql_types::Text, DB> for Ltree
+    impl<DB> diesel::serialize::ToSql<Text, DB> for Ltree
+    where
+        String: diesel::serialize::ToSql<Text, DB>,
+        DB: diesel::backend::Backend,
+        DB: diesel::sql_types::HasSqlType<crate::sql_types::Ltree>,
+    {
+        fn to_sql<W: std::io::Write>(
+            &self,
+            out: &mut diesel::serialize::Output<W, DB>,
+        ) -> diesel::serialize::Result {
+            self.0.to_sql(out)
+        }
+    }
+
+    impl<DB> diesel::deserialize::FromSql<Text, DB> for Ltree
     where
         String: diesel::deserialize::FromSql<Text, DB>,
         DB: diesel::backend::Backend,
-        DB: diesel::sql_types::HasSqlType<Text>,
+        DB: diesel::sql_types::HasSqlType<crate::sql_types::Ltree>,
     {
         fn from_sql(raw: Option<&DB::RawValue>) -> deserialize::Result<Self> {
             String::from_sql(raw).map(Ltree)
         }
     }
-
-    impl<QS> SelectableExpression<QS> for Ltree {}
-    impl<QS> AppearsOnTable<QS> for Ltree {}
-    impl diesel::expression::NonAggregate for Ltree {}
-
-    #[derive(SqlType, Clone, Copy, QueryId)]
-    #[postgres(type_name = "lquery")]
-    pub struct Lquery;
-
-    #[derive(SqlType, Clone, Copy, QueryId)]
-    #[postgres(type_name = "ltxtquery")]
-    pub struct Ltxtquery;
 }
 
-mod functions {
+pub mod functions {
+    use crate::sql_types::*;
     use diesel::sql_types::*;
-    use types::*;
 
     sql_function!(fn subltree(ltree: Ltree, start: Int4, end: Int4) -> Ltree);
     sql_function!(fn subpath(ltree: Ltree, offset: Int4, len: Int4) -> Ltree);
@@ -76,14 +98,14 @@ mod functions {
     sql_function!(fn ltxtquery(x: Text) -> Ltxtquery);
 }
 
-mod dsl {
+pub mod dsl {
+    use crate::sql_types::*;
     use diesel::expression::{AsExpression, Expression};
     use diesel::sql_types::Array;
-    use types::*;
 
     mod predicates {
+        use crate::sql_types::*;
         use diesel::pg::Pg;
-        use types::*;
 
         diesel_infix_operator!(Contains, " @> ", backend: Pg);
         diesel_infix_operator!(ContainedBy, " <@ ", backend: Pg);
@@ -250,6 +272,6 @@ mod dsl {
     impl<T: Expression<SqlType = Ltxtquery>> LtxtqueryExtensions for T {}
 }
 
-pub use self::dsl::*;
-pub use self::functions::*;
-pub use self::types::*;
+pub use crate::dsl::*;
+pub use crate::functions::*;
+pub use crate::values::*;
