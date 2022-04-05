@@ -1,18 +1,21 @@
 extern crate dotenv;
 
-use super::{
-    index, lca, lquery, ltree2text, ltxtquery, nlevel, subltree, subpath, text2ltree,
-    LqueryArrayExtensions, LqueryExtensions, Ltree, LtreeArrayExtensions, LtreeExtensions,
-    LtxtqueryExtensions,
-};
+use diesel::debug_query;
 use diesel::dsl::array;
+use diesel::pg::Pg;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use diesel::select;
 use std::env;
 
+use crate::{
+    index, lca, lquery, ltree2text, ltxtquery, nlevel, subltree, subpath, text2ltree,
+    LqueryArrayExtensions, LqueryExtensions, Ltree, LtreeArrayExtensions, LtreeExtensions,
+    LtxtqueryExtensions,
+};
+
 table! {
-    use super::Ltree;
+    use crate::sql_types::Ltree;
     use diesel::sql_types::*;
 
     my_tree (id) {
@@ -91,6 +94,23 @@ fn base_operations() {
             Ltree("root.eukaryota.plantae.nematophyta".to_string()),
             Ltree("root.eukaryota.plantae.chlorophyta".to_string())
         ]
+    );
+}
+
+#[test]
+fn insert_query_generation() {
+    let query = debug_query::<Pg, _>(&diesel::insert_into(my_tree::table).values(&vec![
+        my_tree::path.eq(Ltree("root".to_string())),
+        my_tree::path.eq(Ltree("root.bacteria".to_string())),
+        my_tree::path.eq(Ltree("root.eukaryota.plantae".to_string())),
+        my_tree::path.eq(Ltree("root.eukaryota.plantae.nematophyta".to_string())),
+        my_tree::path.eq(Ltree("root.eukaryota.plantae.chlorophyta".to_string())),
+    ]))
+    .to_string();
+
+    assert_eq!(
+        query,
+        "INSERT INTO \"my_tree\" (\"path\") VALUES ($1), ($2), ($3), ($4), ($5) -- binds: [Ltree(\"root\"), Ltree(\"root.bacteria\"), Ltree(\"root.eukaryota.plantae\"), Ltree(\"root.eukaryota.plantae.nematophyta\"), Ltree(\"root.eukaryota.plantae.chlorophyta\")]"
     );
 }
 
