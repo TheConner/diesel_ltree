@@ -22,7 +22,7 @@ pub mod sql_types {
 pub mod values {
     use std::io::Read;
 
-    use byteorder::ReadBytesExt;
+    use byteorder::{WriteBytesExt, ReadBytesExt};
     use diesel::deserialize;
     use diesel::pg::Pg;
     use diesel::sql_types::Text;
@@ -36,6 +36,7 @@ pub mod values {
             &self,
             out: &mut diesel::serialize::Output<W, Pg>,
         ) -> diesel::serialize::Result {
+            out.write_i8(1)?;
             out.write_all(self.0.as_bytes())?;
             Ok(diesel::serialize::IsNull::No)
         }
