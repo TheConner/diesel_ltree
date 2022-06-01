@@ -115,6 +115,21 @@ fn insert_query_generation() {
 }
 
 #[test]
+fn insert_works() {
+    let connection = get_connection();
+
+    let result = diesel::insert_into(my_tree::table).values(&vec![
+        my_tree::path.eq(Ltree("root".to_string())),
+        my_tree::path.eq(Ltree("root.bacteria".to_string())),
+        my_tree::path.eq(Ltree("root.eukaryota.plantae".to_string())),
+        my_tree::path.eq(Ltree("root.eukaryota.plantae.nematophyta".to_string())),
+        my_tree::path.eq(Ltree("root.eukaryota.plantae.chlorophyta".to_string())),
+    ]).execute(&connection);
+
+    assert_eq!(result, Ok(5));
+}
+
+#[test]
 fn functions() {
     let connection = get_connection();
 
