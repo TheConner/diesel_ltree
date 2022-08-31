@@ -31,7 +31,7 @@ pub mod values {
     use diesel::pg::{Pg, PgValue};
     use diesel::sql_types::Text;
 
-    #[derive(Debug, PartialEq, Clone, FromSqlRow, AsExpression)]
+    #[derive(Debug, PartialEq, Eq, Clone, FromSqlRow, AsExpression)]
     #[diesel(sql_type = crate::sql_types::Ltree)]
     pub struct Ltree(pub String);
 
