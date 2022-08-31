@@ -37,7 +37,7 @@ pub mod values {
 
     impl diesel::serialize::ToSql<crate::sql_types::Ltree, Pg> for Ltree {
         fn to_sql<'b>(
-            &self,
+            &'b self,
             out: &mut diesel::serialize::Output<'b, '_, Pg>,
         ) -> diesel::serialize::Result {
             out.write_i8(1)?;
