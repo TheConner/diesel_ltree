@@ -26,6 +26,7 @@ table! {
 
 #[derive(Queryable, Debug)]
 struct MyTree {
+    #[allow(dead_code)]
     pub id: i32,
     pub path: Ltree,
 }
@@ -39,7 +40,7 @@ fn get_connection() -> PgConnection {
 
 #[test]
 fn base_operations_without_converting_to_text_first() {
-    let connection = get_connection();
+    let mut connection = get_connection();
 
     let results = my_tree::table
         .select((my_tree::id, my_tree::path))
@@ -49,7 +50,7 @@ fn base_operations_without_converting_to_text_first() {
                 .or(my_tree::path.contains(text2ltree("root.bacteria"))),
         )
         .order(my_tree::id)
-        .load::<MyTree>(&connection)
+        .load::<MyTree>(&mut connection)
         .unwrap()
         .into_iter()
         .map(|t| t.path)
@@ -69,7 +70,7 @@ fn base_operations_without_converting_to_text_first() {
 
 #[test]
 fn base_operations() {
-    let connection = get_connection();
+    let mut connection = get_connection();
 
     let results = my_tree::table
         .select((my_tree::id, ltree2text(my_tree::path)))
@@ -79,7 +80,7 @@ fn base_operations() {
                 .or(my_tree::path.contains(text2ltree("root.bacteria"))),
         )
         .order(my_tree::id)
-        .load::<MyTree>(&connection)
+        .load::<MyTree>(&mut connection)
         .unwrap()
         .into_iter()
         .map(|t| t.path)
@@ -116,32 +117,34 @@ fn insert_query_generation() {
 
 #[test]
 fn insert_works() {
-    let connection = get_connection();
+    let mut connection = get_connection();
 
-    let result = diesel::insert_into(my_tree::table).values(&vec![
-        my_tree::path.eq(Ltree("root".to_string())),
-        my_tree::path.eq(Ltree("root.bacteria".to_string())),
-        my_tree::path.eq(Ltree("root.eukaryota.plantae".to_string())),
-        my_tree::path.eq(Ltree("root.eukaryota.plantae.nematophyta".to_string())),
-        my_tree::path.eq(Ltree("root.eukaryota.plantae.chlorophyta".to_string())),
-    ]).execute(&connection);
+    let result = diesel::insert_into(my_tree::table)
+        .values(&vec![
+            my_tree::path.eq(Ltree("root".to_string())),
+            my_tree::path.eq(Ltree("root.bacteria".to_string())),
+            my_tree::path.eq(Ltree("root.eukaryota.plantae".to_string())),
+            my_tree::path.eq(Ltree("root.eukaryota.plantae.nematophyta".to_string())),
+            my_tree::path.eq(Ltree("root.eukaryota.plantae.chlorophyta".to_string())),
+        ])
+        .execute(&mut connection);
 
     assert_eq!(result, Ok(5));
 }
 
 #[test]
 fn functions() {
-    let connection = get_connection();
+    let mut connection = get_connection();
 
     let result = select(ltree2text(subltree(text2ltree("Top.Child1.Child2"), 1, 2)))
-        .get_result::<String>(&connection);
+        .get_result::<String>(&mut connection);
     assert_eq!(result, Ok("Child1".into()));
 
     let result = select(ltree2text(subpath(text2ltree("Top.Child1.Child2"), 0, 2)))
-        .get_result::<String>(&connection);
+        .get_result::<String>(&mut connection);
     assert_eq!(result, Ok("Top.Child1".into()));
 
-    let result = select(nlevel(text2ltree("Top.Child1.Child2"))).get_result::<i32>(&connection);
+    let result = select(nlevel(text2ltree("Top.Child1.Child2"))).get_result::<i32>(&mut connection);
     assert_eq!(result, Ok(3));
 
     let result = select(index(
@@ -149,20 +152,20 @@ fn functions() {
         text2ltree("5.6"),
         0,
     ))
-    .get_result::<i32>(&connection);
+    .get_result::<i32>(&mut connection);
     assert_eq!(result, Ok(6));
 
     let result = select(ltree2text(lca(array((
         text2ltree("1.2.2.3"),
         text2ltree("1.2.3"),
     )))))
-    .get_result::<String>(&connection);
+    .get_result::<String>(&mut connection);
     assert_eq!(result, Ok("1.2".into()));
 }
 
 #[test]
 fn operators() {
-    let connection = get_connection();
+    let mut connection = get_connection();
 
     let result = select((
         text2ltree("1.1").eq(text2ltree("1.2")),
@@ -170,7 +173,7 @@ fn operators() {
         text2ltree("1.1").ne(text2ltree("1.2")),
         text2ltree("1.1").ne(text2ltree("1.1")),
     ))
-    .get_result::<(bool, bool, bool, bool)>(&connection);
+    .get_result::<(bool, bool, bool, bool)>(&mut connection);
     assert_eq!(result, Ok((false, true, true, false)));
 
     let result = select((
@@ -179,7 +182,7 @@ fn operators() {
         text2ltree("1.2").le(text2ltree("1.1")),
         text2ltree("1.2.1").ge(text2ltree("1.2")),
     ))
-    .get_result::<(bool, bool, bool, bool)>(&connection);
+    .get_result::<(bool, bool, bool, bool)>(&mut connection);
     assert_eq!(result, Ok((true, true, false, true)));
 
     let result = select((
@@ -188,21 +191,21 @@ fn operators() {
         lquery("foo_bar%*").matches(text2ltree("foo1_bar2_baz")),
         lquery("foo_bar%*").matches(text2ltree("foo1_br2_baz")),
     ))
-    .get_result::<(bool, bool, bool, bool)>(&connection);
+    .get_result::<(bool, bool, bool, bool)>(&mut connection);
     assert_eq!(result, Ok((true, false, true, false)));
 
     let result = select((
         text2ltree("foo_bar_baz").matches_any(array((lquery("foo_bar%"), lquery("foo_bat%")))),
         text2ltree("foo_bar_baz").matches_any(array((lquery("foo_bat%"),))),
     ))
-    .get_result::<(bool, bool)>(&connection);
+    .get_result::<(bool, bool)>(&mut connection);
     assert_eq!(result, Ok((true, false)));
 
     let result = select((
         array((lquery("foo_bar%"), lquery("foo_bat%"))).any_matches(text2ltree("foo_bar_baz")),
         array((lquery("foo_bat%"),)).any_matches(text2ltree("foo_bar_baz")),
     ))
-    .get_result::<(bool, bool)>(&connection);
+    .get_result::<(bool, bool)>(&mut connection);
     assert_eq!(result, Ok((true, false)));
 
     let q = ltxtquery("Europe & Russia*@ & !Transportation");
@@ -211,11 +214,11 @@ fn operators() {
         q.tmatches(text2ltree("Europe.russia.Transportation")),
         q.tmatches(text2ltree("russians.today.Europe")),
     ))
-    .get_result::<(bool, bool, bool)>(&connection);
+    .get_result::<(bool, bool, bool)>(&mut connection);
     assert_eq!(result, Ok((true, false, true)));
 
     let result = select(ltree2text(text2ltree("a.b").concat(text2ltree("c.d"))))
-        .get_result::<String>(&connection);
+        .get_result::<String>(&mut connection);
     assert_eq!(result, Ok("a.b.c.d".into()));
 
     let result = select((
@@ -224,14 +227,14 @@ fn operators() {
         text2ltree("a.b").contains_any(array((text2ltree("a"), text2ltree("a.b.c")))),
         array((text2ltree("a"), text2ltree("a.b.c"))).any_contained_by(text2ltree("a.b")),
     ))
-    .get_result::<(bool, bool, bool, bool)>(&connection);
+    .get_result::<(bool, bool, bool, bool)>(&mut connection);
     assert_eq!(result, Ok((true, true, true, true)));
 
     let result = select((
         array((text2ltree("a"), text2ltree("a.b"))).any_matches(lquery("a%")),
         lquery("a%").matches_any(array((text2ltree("a"), text2ltree("a.b")))),
     ))
-    .get_result::<(bool, bool)>(&connection);
+    .get_result::<(bool, bool)>(&mut connection);
     assert_eq!(result, Ok((true, true)));
 
     let result = select((
@@ -240,14 +243,14 @@ fn operators() {
         array((lquery("a%"), lquery("b%")))
             .any_matches_any(array((text2ltree("a"), text2ltree("a.b")))),
     ))
-    .get_result::<(bool, bool)>(&connection);
+    .get_result::<(bool, bool)>(&mut connection);
     assert_eq!(result, Ok((true, true)));
 
     let result = select((
         array((text2ltree("a"), text2ltree("a.b"))).any_tmatches(ltxtquery("a")),
         ltxtquery("a").tmatches_any(array((text2ltree("a"), text2ltree("a.b")))),
     ))
-    .get_result::<(bool, bool)>(&connection);
+    .get_result::<(bool, bool)>(&mut connection);
     assert_eq!(result, Ok((true, true)));
 
     let result = select((
@@ -256,7 +259,7 @@ fn operators() {
             array((text2ltree("a"), text2ltree("a.b.c"))).first_contained_by(text2ltree("a.b")),
         ),
     ))
-    .get_result::<(String, String)>(&connection);
+    .get_result::<(String, String)>(&mut connection);
     assert_eq!(result, Ok(("a".into(), "a.b.c".into())));
 
     let result = select((
@@ -265,6 +268,6 @@ fn operators() {
             array((text2ltree("a"), text2ltree("a.b.c"))).first_tmatches(ltxtquery("a & b")),
         ),
     ))
-    .get_result::<(String, String)>(&connection);
+    .get_result::<(String, String)>(&mut connection);
     assert_eq!(result, Ok(("a".into(), "a.b.c".into())));
 }

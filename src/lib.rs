@@ -6,35 +6,39 @@ extern crate diesel;
 mod tests;
 
 pub mod sql_types {
+    use diesel::query_builder::QueryId;
+    use diesel::sql_types::SqlType;
+
     #[derive(SqlType, QueryId)]
-    #[postgres(type_name = "ltree")]
+    #[diesel(postgres_type(name = "ltree"))]
     pub struct Ltree;
 
     #[derive(SqlType, Clone, Copy, QueryId)]
-    #[postgres(type_name = "lquery")]
+    #[diesel(postgres_type(name = "lquery"))]
     pub struct Lquery;
 
     #[derive(SqlType, Clone, Copy, QueryId)]
-    #[postgres(type_name = "ltxtquery")]
+    #[diesel(postgres_type(name = "ltxtquery"))]
     pub struct Ltxtquery;
 }
 
 pub mod values {
-    use std::io::Read;
+    use std::io::{Read, Write};
 
-    use byteorder::{WriteBytesExt, ReadBytesExt};
-    use diesel::deserialize;
-    use diesel::pg::Pg;
+    use byteorder::{ReadBytesExt, WriteBytesExt};
+    use diesel::deserialize::{self, FromSqlRow};
+    use diesel::expression::AsExpression;
+    use diesel::pg::{Pg, PgValue};
     use diesel::sql_types::Text;
 
-    #[derive(Debug, PartialEq, Clone, FromSqlRow, AsExpression)]
-    #[sql_type = "crate::sql_types::Ltree"]
+    #[derive(Debug, PartialEq, Eq, Clone, FromSqlRow, AsExpression)]
+    #[diesel(sql_type = crate::sql_types::Ltree)]
     pub struct Ltree(pub String);
 
     impl diesel::serialize::ToSql<crate::sql_types::Ltree, Pg> for Ltree {
-        fn to_sql<W: std::io::Write>(
-            &self,
-            out: &mut diesel::serialize::Output<W, Pg>,
+        fn to_sql<'b>(
+            &'b self,
+            out: &mut diesel::serialize::Output<'b, '_, Pg>,
         ) -> diesel::serialize::Result {
             out.write_i8(1)?;
             out.write_all(self.0.as_bytes())?;
@@ -43,8 +47,8 @@ pub mod values {
     }
 
     impl diesel::deserialize::FromSql<crate::sql_types::Ltree, Pg> for Ltree {
-        fn from_sql(raw: Option<&[u8]>) -> deserialize::Result<Self> {
-            let mut raw = not_none!(raw);
+        fn from_sql(value: PgValue) -> deserialize::Result<Self> {
+            let mut raw = value.as_bytes();
 
             let version = raw.read_i8()?;
             debug_assert_eq!(version, 1, "Unknown ltree binary protocol version.");
@@ -61,9 +65,9 @@ pub mod values {
         DB: diesel::backend::Backend,
         DB: diesel::sql_types::HasSqlType<crate::sql_types::Ltree>,
     {
-        fn to_sql<W: std::io::Write>(
-            &self,
-            out: &mut diesel::serialize::Output<W, DB>,
+        fn to_sql<'b>(
+            &'b self,
+            out: &mut diesel::serialize::Output<'b, '_, DB>,
         ) -> diesel::serialize::Result {
             self.0.to_sql(out)
         }
@@ -75,8 +79,8 @@ pub mod values {
         DB: diesel::backend::Backend,
         DB: diesel::sql_types::HasSqlType<crate::sql_types::Ltree>,
     {
-        fn from_sql(raw: Option<&DB::RawValue>) -> deserialize::Result<Self> {
-            String::from_sql(raw).map(Ltree)
+        fn from_sql(bytes: diesel::backend::RawValue<'_, DB>) -> deserialize::Result<Self> {
+            String::from_sql(bytes).map(Ltree)
         }
     }
 }
@@ -108,16 +112,16 @@ pub mod dsl {
         use crate::sql_types::*;
         use diesel::pg::Pg;
 
-        diesel_infix_operator!(Contains, " @> ", backend: Pg);
-        diesel_infix_operator!(ContainedBy, " <@ ", backend: Pg);
-        diesel_infix_operator!(Matches, " ~ ", backend: Pg);
-        diesel_infix_operator!(MatchesAny, " ? ", backend: Pg);
-        diesel_infix_operator!(TMatches, " @ ", backend: Pg);
-        diesel_infix_operator!(Concat, " || ", Ltree, backend: Pg);
-        diesel_infix_operator!(FirstContains, " ?@> ", Ltree, backend: Pg);
-        diesel_infix_operator!(FirstContainedBy, " ?<@ ", Ltree, backend: Pg);
-        diesel_infix_operator!(FirstMatches, " ?~ ", Ltree, backend: Pg);
-        diesel_infix_operator!(FirstTMatches, " ?@ ", Ltree, backend: Pg);
+        diesel::infix_operator!(Contains, " @> ", backend: Pg);
+        diesel::infix_operator!(ContainedBy, " <@ ", backend: Pg);
+        diesel::infix_operator!(Matches, " ~ ", backend: Pg);
+        diesel::infix_operator!(MatchesAny, " ? ", backend: Pg);
+        diesel::infix_operator!(TMatches, " @ ", backend: Pg);
+        diesel::infix_operator!(Concat, " || ", Ltree, backend: Pg);
+        diesel::infix_operator!(FirstContains, " ?@> ", Ltree, backend: Pg);
+        diesel::infix_operator!(FirstContainedBy, " ?<@ ", Ltree, backend: Pg);
+        diesel::infix_operator!(FirstMatches, " ?~ ", Ltree, backend: Pg);
+        diesel::infix_operator!(FirstTMatches, " ?@ ", Ltree, backend: Pg);
     }
 
     use self::predicates::*;
