@@ -35,7 +35,9 @@ fn get_connection() -> PgConnection {
     dotenv::dotenv().ok();
 
     let database_url = env::var("TEST_DATABASE_URL").expect("TEST_DATABASE_URL must be set");
-    PgConnection::establish(&database_url).expect("Error connecting to TEST_DATABASE_URL")
+    let mut connection = PgConnection::establish(&database_url).expect("Error connecting to TEST_DATABASE_URL");
+    connection.begin_test_transaction().expect("couldn't begin test transaction");
+    connection
 }
 
 #[test]
