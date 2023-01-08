@@ -1,0 +1,7 @@
+[print_schema]
+file = "src/tests/schema.rs"
+patch_file = "src/tests/schema.patch"
+
+import_types = ["diesel::sql_types::*", "crate::sql_types::*"]
+# For diesel_ltree users wishing to use print_schema, you'll want something like this instead:
+# import_types = ["diesel::sql_types::*", "diesel_ltree::sql_types::*"]
