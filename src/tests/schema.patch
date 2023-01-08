@@ -1,0 +1,12 @@
+diff --git a/src/tests/schema.rs b/src/tests/schema.rs
+index fffac8a..f662a3d 100644
+--- a/src/tests/schema.rs
++++ b/src/tests/schema.rs
+@@ -9,7 +9,6 @@ pub mod sql_types {
+ diesel::table! {
+     use diesel::sql_types::*;
+     use crate::sql_types::*;
+-    use super::sql_types::Ltree;
+ 
+     my_tree (id) {
+         id -> Int4,

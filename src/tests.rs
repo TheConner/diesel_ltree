@@ -1,5 +1,7 @@
 extern crate dotenv;
 
+mod schema;
+
 use diesel::debug_query;
 use diesel::dsl::array;
 use diesel::pg::Pg;
@@ -14,15 +16,7 @@ use crate::{
     LtxtqueryExtensions,
 };
 
-table! {
-    use crate::sql_types::Ltree;
-    use diesel::sql_types::*;
-
-    my_tree (id) {
-        id -> Int4,
-        path -> Ltree,
-    }
-}
+use self::schema::my_tree;
 
 #[derive(Queryable, Debug)]
 struct MyTree {
