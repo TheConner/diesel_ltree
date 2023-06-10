@@ -79,7 +79,9 @@ pub mod values {
         DB: diesel::backend::Backend,
         DB: diesel::sql_types::HasSqlType<crate::sql_types::Ltree>,
     {
-        fn from_sql(bytes: diesel::backend::RawValue<'_, DB>) -> deserialize::Result<Self> {
+        fn from_sql(
+            bytes: <DB as diesel::backend::Backend>::RawValue<'_>,
+        ) -> deserialize::Result<Self> {
             String::from_sql(bytes).map(Ltree)
         }
     }
