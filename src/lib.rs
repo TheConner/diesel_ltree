@@ -9,7 +9,7 @@ pub mod sql_types {
     use diesel::query_builder::QueryId;
     use diesel::sql_types::SqlType;
 
-    #[derive(SqlType, QueryId)]
+    #[derive(SqlType, Clone, Copy, QueryId)]
     #[diesel(postgres_type(name = "ltree"))]
     pub struct Ltree;
 
