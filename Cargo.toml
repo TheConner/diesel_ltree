@@ -1,6 +1,6 @@
 [package]
 name = "diesel_ltree"
-version = "0.3.0"
+version = "0.3.1"
 # Currently maintained by Conner Bradley, originally written by Ashe Connor
 authors = ["Conner Bradley <bradley@advtech.ca>", "Ashe Connor <ashe@kivikakk.ee>"]
 description = "Adds support for the PostgreSQL ltree extension to Diesel"
