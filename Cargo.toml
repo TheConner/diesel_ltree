@@ -8,7 +8,7 @@ edition = "2021"
 license = "MIT"
 categories = ["database"]
 readme = "README.md"
-repository = "https://github.com/kivikakk/diesel_ltree"
+repository = "https://github.com/TheConner/diesel_ltree"
 
 [dependencies]
 byteorder = "1.0"
